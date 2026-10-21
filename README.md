@@ -363,21 +363,12 @@ curl http://127.0.0.1:8765/healthz
 sudo apt install -y nginx certbot python3-certbot-nginx
 ```
 
-`/etc/nginx/sites-available/mooneink`：
+`/etc/nginx/sites-available/mooneink`（先只写 80 端口，证书由下一步的 Certbot 自动补上）：
 
 ```nginx
 server {
     listen 80;
     server_name ephemera.example.com;
-    return 301 https://$host$request_uri;
-}
-
-server {
-    listen 443 ssl http2;
-    server_name ephemera.example.com;
-
-    ssl_certificate     /etc/letsencrypt/live/ephemera.example.com/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/ephemera.example.com/privkey.pem;
 
     client_max_body_size 1m;
 
@@ -427,7 +418,7 @@ server {
 }
 ```
 
-启用配置并申请证书：
+启用配置并申请证书（Certbot 会自动加上 443 监听、证书路径和 HTTP→HTTPS 跳转）：
 
 ```bash
 sudo ln -s /etc/nginx/sites-available/mooneink /etc/nginx/sites-enabled/mooneink
