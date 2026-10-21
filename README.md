@@ -77,7 +77,7 @@ MCP 端点是 Streamable HTTP、无会话状态，稿件和状态都落在服务
 
 - 所有稿件、排版、资产、请求账本都存在服务自己的数据目录（SQLite + 内容寻址文件），不依赖外部数据库或消息队列。
 - 服务端投稿账本对同一 `(instance, caller, request_id)` 只产生一次结果；作者工具每次调用使用新的 `request_id`，所以客户端重试会被记为另一篇新稿。
-- 提供全停机的备份、校验、同实例迁移和灾难恢复命令（`scripts/data-admin.mjs`）。当前 1.0.0 发布包中的 `data-admin` 可能仍按旧 schema 校验，执行前先核对工具与服务版本；报 `unsupported data schema` 时不要继续 restore。
+- 提供全停机的备份、校验、同实例迁移和灾难恢复命令（`scripts/data-admin.mjs`）。仓库内的脚本已按当前数据库 schema 校验；1.0.0 安装包内附带的旧脚本若报 `unsupported data schema`，请改用仓库最新脚本或新发布包。
 
 ---
 
@@ -483,7 +483,7 @@ ssh -L 8765:127.0.0.1:8765 youruser@your-vps
   sudo systemctl start mooneink
   ```
 
-  如果 `backup` 报 `unsupported data schema`，说明 `data-admin` 与当前数据库 schema 不一致；先停止操作并核对发布包版本，不要继续 `restore`。
+  如果 `backup` 报 `unsupported data schema`，说明你用的是 1.0.0 安装包内附带的旧 `data-admin`；改用仓库最新脚本或新发布包，不要继续 `restore`。
 
 - 迁移到新机器用 `restore --mode migrate`；灾难恢复用 `restore --mode disaster`，后者会轮换实例身份并把恢复时仍在处理的稿件标记为 `unknown_after_restore`，不会自动发布。
 
@@ -525,7 +525,7 @@ ssh -L 8765:127.0.0.1:8765 youruser@your-vps
 | VPS 上返回 403 | `network.allowedHosts` 是否包含公网域名；Nginx 是否传了 `Host $host`。 |
 | 设备在 VPS 上连不上 | `deviceChannel.public_endpoint` 是否为公网 HTTPS 根地址；Nginx 是否转发了 `/device/`；防火墙是否放行 443。 |
 | 上传图片没反应 | 是否为 PNG、是否超过 2 MiB；控制台会提示具体错误。建议使用透明背景，但服务只校验 PNG 格式和大小。 |
-| 备份报 `unsupported data schema` | `data-admin` 与当前数据库 schema 版本不一致；停止操作、核对发布包版本，不要继续 restore。 |
+| 备份报 `unsupported data schema` | 1.0.0 安装包内附带的 `data-admin` 旧于服务数据库 schema；改用仓库最新脚本或新发布包，不要继续 restore。 |
 
 ---
 

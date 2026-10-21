@@ -21,7 +21,7 @@ import { fileURLToPath } from 'node:url';
 import { DatabaseSync } from 'node:sqlite';
 
 const ADMIN_SCHEMA = 1;
-const DATA_SCHEMA = 9;
+const DATA_SCHEMA = 10;
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const SERVICE_VERSION = JSON.parse(readFileSync(join(SCRIPT_DIR, '..', 'package.json'), 'utf8')).version;
 const POLICY_FILE = 'restore-policy.json';
