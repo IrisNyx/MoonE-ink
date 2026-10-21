@@ -16,7 +16,7 @@ MoonE-ink（服务内部名为 Ephemera）是一套自托管的墨水屏出版�
 - [VPS 部署（手把手）](#vps-部署手把手)
 - [自定义图片：目前是占位符](#自定义图片目前是占位符)
 - [常见问题](#常见问题)
-- [从源码构建与验证](#从源码构建与验证)
+- [从源码构建与固件](#从源码构建与固件)
 - [参考项目、协议与隐私](#参考项目协议与隐私)
 
 ---
@@ -25,29 +25,29 @@ MoonE-ink（服务内部名为 Ephemera）是一套自托管的墨水屏出版�
 
 ### 作者模型经 MCP 投稿
 
-服务同时提供两个 MCP「视图」：
+作者模型连接 `/mcp` 时只看到两个工具（公开安装包已把作者凭据的 `tool_view` 设为 `author`）：
 
-- **作者视图**（作者 Bearer）只暴露两个工具：
-  - `ephemera_publish`：提交一篇稿件。带体裁目录和写作指引，作者按体裁填标题、正文、落款等字段。
-  - `ephemera_peek`：查看当前屏上内容、未读和近期作品。
-- **管理与内部视图**（内部 Bearer）暴露七个工具：
-  `ephemera_service_info`、`ephemera_list_genres`、`ephemera_publish`、`ephemera_request_status`、`ephemera_history`、`ephemera_peek`、`ephemera_withdraw`。
+- `ephemera_publish`：提交一篇稿件。带当前可用体裁的目录和写作指引；普通散文直接填 `body`，诗、电报、行程单等结构稿用 `content.kind` 指定体裁。
+- `ephemera_peek`：回看自己的作品、当前作品和未读；写气象简报前必须先调用 `ephemera_peek(scope=weather)` 读取已配置地点的真实预报。
 
-MCP 端点是 Streamable HTTP、无会话状态：丢连接不会丢稿件，调用方换连接重试同一请求会拿到同一份持久结果。作者 Bearer 与管理员 Bearer 是两把不同的密钥，可以分别撤销。
+控制台和网页管理接口不经过 MCP；管理员在网页控制台里查看、配置和管理，作者模型拿不到这些能力。作者 MCP 凭据与网页控制台的管理员凭据是两套独立密钥：作者凭据在配置里撤销或替换，管理员凭据在控制台或私有部署配置中更换。
 
-### 22 种内置版式
+MCP 端点是 Streamable HTTP、无会话状态，稿件和状态都落在服务的 SQLite 里：连接断开不会丢失已接受的投稿。作者每次投稿都会生成新的请求标识，所以重试一次投稿等于再投一篇，不会自动去重；客户端应避免重复提交。
+
+### 22 种内置体裁
 
 服务内置以下体裁（`weekly-chart` 周谱只保留历史与预览，当前共 21 种接受新投稿）：
 
 醒来纸、便签、周谱、气象简报、残月黄历、明信片、登机牌、行程单、护照盖章页、海关申报单、欠条、票根、电报、号外、处方笺、健诊表、夜航日志、某夜星空、诗、御神签、印记徽、节目单。
 
-大多数版式是单页；便签、醒来纸（附刊）、行程单、护照、海关、夜航日志、印记徽、节目单支持真实分页，最多 16 页。分页由 Chromium 中真实的 DOM 行高测量得出，不是按字数估算。
+大多数版式是单页；便签、醒来纸（附刊）、行程单、护照、海关、夜航日志、印记徽、节目单支持真实分页，最多 16 页。分页由 Chromium 中真实排版后的尺寸与溢出测量逐页确认，不是按字数估算。
 
 ### 真实渲染，不是模板截图
 
-- 输出固定为 **540 × 960** 的 PNG，以及墨水屏用的 `epaper-540x960-gray4-v1` 帧：每像素 4 bit、每行 270 字节、整帧 259,200 字节。
+- 竖版输出为 **540 × 960** 的 PNG，以及墨水屏用的 `epaper-540x960-gray4-v1` 帧：每像素 4 bit、每行 270 字节、整帧 259,200 字节。
+- 部分版式（明信片、票根、诗的横版）输出 **960 × 540**，对应 `epaper-960x540-gray4-v1` 帧：每行 480 字节、整帧同样 259,200 字节。设备通道是否提供横版由 `deviceChannel.allowed_profiles` 决定。
 - 纸张纯白、主要文字纯黑，灰色只用于次要信息与装饰；不做抗锯齿之外的抖动。
-- 排版器版本、Chromium 版本、字体子集清单都会记录进渲染清单；同一稿件重复渲染得到字节一致的图像。
+- 排版器版本、Chromium 版本、字体子集清单都会记录进渲染清单；排版器、浏览器和字体都锁定版本，相同稿件与相同日期重复渲染得到字节一致的图像。
 - 正文按作者原文逐字渲染，不做 Unicode 归一化、不去空行、不擅自改写；放不下就按稳定错误码失败，而不是缩小字号或裁切。
 
 ### 网页控制台
@@ -59,14 +59,14 @@ MCP 端点是 Streamable HTTP、无会话状态：丢连接不会丢稿件，调
 - **版式与落款**：每个内置版式的说明、触发建议、示例预览；各体裁的落款，主标志、辅助标志，以及五种表情/角色图。
 - **排版工**：配置 OpenAI Chat Completions 兼容端点或 Ephemera 桥，设置模型、密钥、时间预算和四步提示词，并可测试文字、结构化输出、看图三项能力。
 - **天气预报**：接入和风天气（QWeather）API，搜索地点、获取实时与三日预报；未启用时不伪造天气数据。
-- **MCP 配置**：给登录的管理员显示可复制的作者端点和作者 Bearer 配置，并区分本机、局域网、公网地址。
+- **MCP 配置**：配置了 `auth.console_bearer_file` 且文件内容与作者凭据匹配时，显示可复制的作者端点和作者 Bearer；端点区分本机、局域网、公网。
 - **设备**：第一次配置的完整流程——浏览器经 USB 校验并刷入固件、写 Wi-Fi、配对，等待设备持久确认。
 - **报错与回执**：出版失败原因、设备事件和回执。
-- **账户**：轮换管理员凭据。
+- **账户**：查看服务信息；未由部署配置托管管理员凭据时，可在这里轮换管理员 Bearer。
 
 ### 设备通道与固件
 
-- 管理员在控制台生成**一次性配对码**（默认 15 分钟、5 次尝试）。
+- 控制台“第一次配置”会自动生成**一次性配对码**（默认 15 分钟、5 次尝试），并通过 USB 配置流程交给设备。
 - 设备通过 HTTPS（或受信任的局域网 HTTP）配对，拿到独立设备凭据。
 - 设备按帧下载授权过的灰度资源，逐页校验字节长度和 SHA-256，写入缓存，再上报 cached / presented / acknowledged 等回执。
 - 固件工程按 `lilygo-t5-47-s3-pro-lite-h752-01` 板型定义，包含 LVGL 8.4.0 界面、设置/诊断页、阅读器入口和主屏 App。
@@ -75,7 +75,7 @@ MCP 端点是 Streamable HTTP、无会话状态：丢连接不会丢稿件，调
 ### 数据持久化
 
 - 所有稿件、排版、资产、请求账本都存在服务自己的数据目录（SQLite + 内容寻址文件），不依赖外部数据库或消息队列。
-- 投稿有幂等账本：同一 `(instance, caller, request_id)` 只会产生一次结果；重试安全。
+- 服务端投稿账本对同一 `(instance, caller, request_id)` 只产生一次结果；作者工具每次调用使用新的 `request_id`，所以客户端重试会被记为另一篇新稿。
 - 提供全停机的备份、校验、同实例迁移和灾难恢复命令（`scripts/data-admin.mjs`）。
 
 ---
@@ -91,10 +91,10 @@ MCP 端点是 Streamable HTTP、无会话状态：丢连接不会丢稿件，调
 **尚未完成或不要误认为可用**
 
 - **续航仍在实机观察**，不承诺“一充可用几天”。频繁刷新、Wi-Fi 和电池状态都会影响结果。
-- **TF 卡阅读器未完成**：固件保留了入口和原生 TXT 解析基础，但读卡、中文书籍排版、加密进度存储和离线中文字体包尚未接通。目前进入阅读器只会看到插卡/状态页。
+- **TF 卡阅读器未完成**：固件保留了入口和原生 TXT 解析基础，但 TF 卡适配与书目扫描、后台索引、加密进度存储和离线中文字体包尚未接通。目前进入阅读器只会看到插卡/状态页。
 - **周谱**保留历史与预览，但不接受新投稿。
 - **自制版式工作台**只预留了只读接口，不能在控制台里设计并提交新模板。
-- **服务目前是前台进程**，没有内置开机自启或云端托管；可以用计划任务、systemd 或进程守护工具自行管理。
+- **公开安装包的启动脚本目前前台运行**，关闭窗口即停止，没有内置开机自启；VPS 可用 systemd，Windows 可用计划任务或进程守护工具。
 - 设备 Wi-Fi 需要 **2.4 GHz**；5 GHz-only 网络连不上。
 
 ---
@@ -117,7 +117,7 @@ MCP 端点是 Streamable HTTP、无会话状态：丢连接不会丢稿件，调
 **步骤**
 
 1. 打开本仓库的 [Releases](https://github.com/IrisNyx/MoonE-ink/releases/latest)，下载最新的 `ephemera-mcp-service-*-public-win32-x64.zip`。
-2. **完整解压**到一个固定文件夹。不要只拿出其中的 `.exe` 或 `firmware.bin`；安装包是一个完整目录，脚本、依赖、固件和排版器都在里面。
+2. **完整解压**到一个固定文件夹。不要只拿走 `firmware.bin` 或某个单独文件；脚本、依赖、固件和排版器都在这个完整目录里。
 3. 查电脑的局域网 IPv4 地址：在 PowerShell 运行 `ipconfig`，找到当前 Wi-Fi/以太网适配器的 `IPv4 地址`，例如 `192.168.1.25`。后面用你自己的地址替换示例。
 4. 在解压目录打开 PowerShell，运行：
 
@@ -132,7 +132,7 @@ MCP 端点是 Streamable HTTP、无会话状态：丢连接不会丢稿件，调
 5. 在这台电脑的 Chrome/Edge 打开 <http://127.0.0.1:8765/console>。
    首次登录使用 `ephemera-private\secrets\owner-bearer.txt` 里的**管理员 Bearer**。这是人类控制台用的，不要发给作者模型。
    控制台“总览”应显示服务在线、排版可用。
-6. 用 USB 线连接墨水屏。在控制台 **设备 → 第一次配置** 中填写 Wi-Fi 名称、密码和设备名称，确认服务器地址指向刚才电脑的局域网 IPv4，然后执行**完整安装**。
+6. 用 USB 线连接墨水屏。在控制台 **设备 → 第一次配置** 中填写 Wi-Fi 名称、密码和设备名称，确认服务器地址指向刚才电脑的局域网 IPv4，然后点击 **连接 USB 并安装**。
    浏览器会请求选择串口、写入固件、配置 Wi-Fi 并配对。等控制台显示“安装完成”再拔线。刷机必须在电脑本机的 `localhost`/`127.0.0.1` 页面操作，因为 Web Serial 只在该安全上下文中可用。
 7. 给作者模型接 MCP：在控制台 **MCP 配置** 复制**作者端点**，Bearer 使用 `ephemera-private\secrets\author-bearer.txt`。
    本机端点通常是 `http://127.0.0.1:8765/mcp`；同一局域网的另一台设备要换成电脑的局域网地址。
@@ -143,7 +143,7 @@ MCP 端点是 Streamable HTTP、无会话状态：丢连接不会丢稿件，调
 
 - 关闭 PowerShell 窗口服务就停止。
 - 投稿后可在控制台“投稿浏览”同时看纯文字和排版原图；在墨水屏上阅读、翻页，返回主页后从“纸匣”找未读与最近记录。
-- 控制台“设备”可看电量、Wi-Fi 状态和最近回执。
+- 控制台“设备”可看电量、连接状态和最近回执。
 - 备份：先停止服务，再运行 `node scripts/data-admin.mjs backup --data-dir <数据目录> --config <配置> --output <新备份目录>`。
 
 ### 方式 B：从源码运行（Windows / macOS / Linux）
@@ -174,19 +174,21 @@ cp config.example.json config.local.json
 | `server.dataDir` | 服务独占的数据目录，例如 `D:/ephemera-data` 或 `/var/lib/ephemera`。不要放在源码目录里。 |
 | `server.timezone` | IANA 时区，例如 `Asia/Shanghai`。 |
 | `network.allowedHosts` | 允许的 Host 头。局域网访问时加入电脑 IP。 |
-| `auth.credentials[].token_sha256` | 作者/内部 Bearer 的 SHA-256 十六进制摘要。 |
+| `auth.credentials[].token_sha256` | 作者 Bearer 的 SHA-256 十六进制摘要。 |
+| `auth.credentials[].tool_view` | 作者凭据设为 `author`，模型才会只看到投稿和回看两个工具。 |
+| `auth.console_bearer_file` | 可选。指向一个存放**作者原始 Bearer** 的文件；设置后控制台“MCP 配置”才能显示可复制的作者凭据。文件不要放进仓库。 |
 | `deviceChannel.enabled` | 要接墨水屏就设为 `true`。 |
 | `deviceChannel.owner_token_sha256` | 管理员 Bearer 的 SHA-256 摘要。 |
 | `deviceChannel.publisher_caller_ids` | 允许向设备发布稿件的 `caller_id`。 |
 | `deviceChannel.public_endpoint` | 设备要访问的服务根地址；局域网填 `http://192.168.1.25:8765`，VPS 填 HTTPS 域名。 |
 
-密码/Token 只以 SHA-256 摘要形式写进配置。生成摘要：
+MCP 凭据在配置里只写 SHA-256 摘要；可选的 `auth.console_bearer_file` 是例外，它指向一个存放**作者原始 Token** 的文件，供控制台显示。生成摘要：
 
 ```bash
 node -e "const{createHash}=require('node:crypto');console.log(createHash('sha256').update('你的原始Token').digest('hex'))"
 ```
 
-原始 Token 自己保存好；服务不存原文，丢了无法找回。
+原始 Token 自己保存好；服务只在配置和数据库里保存摘要，不能从摘要反推出原始值。
 
 **3. 安装排版用 Chromium**
 
@@ -211,8 +213,8 @@ node dist/src/index.js --config config.local.json
 看到类似 `{"event":"listening","host":"127.0.0.1","port":8765}` 即启动成功。
 
 - 控制台：<http://127.0.0.1:8765/console>
-- 如果启用了设备通道，管理员登录用你配置里的管理员 Bearer（或其摘要对应的原始值）。
-- 如果没有配置管理员 Bearer，首次启动会在数据目录生成 `owner-bootstrap.txt`，用其中一次性凭据在控制台完成首次初始化。
+- 如果启用了设备通道，管理员登录用你设置 `deviceChannel.owner_token_sha256` 时对应的原始管理员 Token。
+- 如果部署配置里没有管理员凭据（例如没有启用设备通道），首次启动会在数据目录生成 `owner-bootstrap.txt`，用其中一次性凭据在控制台完成首次初始化。
 
 停止：POSIX 下 `Ctrl+C` 或 `SIGTERM` 会优雅退出；Windows 下建议由守护进程传入 `--stop-on-stdin-eof` 并在关闭管道时请求停止。
 
@@ -261,6 +263,8 @@ sudo env PLAYWRIGHT_BROWSERS_PATH=/opt/mooneink/browsers node node_modules/playw
 sudo chown -R "$USER":"$USER" /opt/mooneink/browsers
 ```
 
+Ubuntu 24.04 默认限制非特权用户命名空间，Chromium 沙箱可能因此无法启动。若排版报 `render_failed`，先看 `journalctl -u mooneink` 中的 Chromium 启动错误，再按发行版文档调整；不要用 root 运行整个服务来绕过沙箱。
+
 ### 4. 准备数据目录与配置
 
 ```bash
@@ -285,6 +289,7 @@ cp config.example.json /opt/mooneink/config.json
   },
   "auth": {
     "mode": "static-bearer",
+    "console_bearer_file": "/opt/mooneink/secrets/author-bearer.txt",
     "credentials": [
       {
         "credential_id": "cred_author",
@@ -301,7 +306,7 @@ cp config.example.json /opt/mooneink/config.json
     "public_endpoint": "https://ephemera.example.com",
     "channel_id": "channel_default",
     "publisher_caller_ids": ["author_01"],
-    "allowed_profiles": ["epaper-540x960-gray4-v1"]
+    "allowed_profiles": ["epaper-540x960-gray4-v1"]  // 需要横版时加入 "epaper-960x540-gray4-v1"
   }
 }
 ```
@@ -311,13 +316,24 @@ cp config.example.json /opt/mooneink/config.json
 - `server.host` 保持 `127.0.0.1`，公网入口只由 Nginx 提供。
 - `network.allowedHosts` 必须包含你的公网域名，否则反向代理转发过来的 Host 头会被拒绝。
 - `deviceChannel.public_endpoint` 写公网 **HTTPS 根地址**，不要带路径、查询串或账号密码。
-- 管理员 Token 与作者 Token 必须不同；管理员 Token 只给控制台，作者 Token 只给模型。
+- 管理员 Token 与作者 Token 应不同；管理员 Token 只给控制台，作者 Token 只给模型。
 
 生成摘要：
 
 ```bash
 node -e "const{createHash}=require('node:crypto');console.log(createHash('sha256').update(process.argv[1]).digest('hex'))" '你的原始Token'
 ```
+
+把**作者原始 Token** 写到 `auth.console_bearer_file` 指向的文件，权限设为仅服务用户可读；控制台的“MCP 配置”会读取它来显示可复制的作者凭据。它的 SHA-256 必须与某个 `tool_view: "author"` 凭据的 `token_sha256` 一致，否则控制台不会显示：
+
+```bash
+mkdir -p /opt/mooneink/secrets
+printf '%s\n' '作者原始Token' > /opt/mooneink/secrets/author-bearer.txt
+chmod 700 /opt/mooneink/secrets
+chmod 600 /opt/mooneink/secrets/author-bearer.txt
+```
+
+管理员原始 Token 不写进服务配置，自己保存好，用于登录网页控制台。
 
 ### 5. 用 systemd 常驻
 
@@ -409,6 +425,7 @@ server {
     location /admin/ {
         allow 203.0.113.10;
         deny all;
+        client_max_body_size 20m;   # 个性化图片以 base64 JSON 上传，2 MiB PNG 会超过 1m
         proxy_pass http://127.0.0.1:8765;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
@@ -439,7 +456,7 @@ ssh -L 8765:127.0.0.1:8765 youruser@your-vps
 ### 7. 设备配对与首次刷机
 
 - 在能访问控制台的浏览器里打开 `https://ephemera.example.com/console`（或 SSH 隧道下的本机地址），登录管理员。
-- 控制台 **设备 → 第一次配置**：用 USB 连接墨水屏，选择串口，填写 2.4 GHz Wi-Fi 和密码，服务器地址会自动使用 `deviceChannel.public_endpoint`。
+- 控制台 **设备 → 第一次配置**：用 USB 连接墨水屏，选择串口，填写 2.4 GHz Wi-Fi 和密码，服务器地址会自动使用 `deviceChannel.public_endpoint`，然后点击 **连接 USB 并安装**。
 - 浏览器会完成固件写入、Wi-Fi 配置和配对；设备之后独立经 Wi-Fi 连 VPS。
 - 如果控制台是通过 SSH 隧道以 `http://127.0.0.1:8765` 打开的，Web Serial 可用；如果是普通局域网 IP 的 HTTP 页面，则不可用，因为浏览器不把它当作安全上下文。
 
@@ -464,18 +481,18 @@ ssh -L 8765:127.0.0.1:8765 youruser@your-vps
 
 ## 自定义图片：目前是占位符
 
-**请先注意：公开版的主标志、辅助标志和五种表情/角色图，现在全部使用同一张黑白玫瑰占位图。**
+**请先注意：公开版在没有上传自定义图片时，主标志、辅助标志和五种表情/角色图都会回落到同一张黑白玫瑰占位图（便签的辅助标志位使用内置几何装饰）。**
 
 - 它不是项目作者的私人图片，也不是上游项目的狐狸图。
 - 占位图位于 [`assets/public/rose-placeholder.svg`](assets/public/rose-placeholder.svg)（PNG 同目录）。
-- 它的作用只是告诉你“这里可以换图”；在控制台上传自己的图片后，才会显示你自己的视觉形象。
-- 五种状态分别是：**普通、高兴、悲伤、思考、趴下**。你可以先上传一张通用图，再逐步替换。
+- 它的作用只是告诉你“这里可以换图”；在控制台上传自己的图片后，对应位置才会显示你的视觉形象。
+- 五种状态分别是：**普通、高兴、悲伤、思考、趴下**。醒来纸、御神签、号外和行程单会按内容选用不同状态；你可以先上传一张通用图，再逐步替换。
 
 ### 推荐上传尺寸
 
 上传入口：控制台 **版式与落款**。
 
-要求：**透明背景 PNG，单张不超过 2 MiB**。以下是建议制作尺寸，不是服务器硬性限制；系统会按版面等比缩放。
+格式要求：**PNG，单张不超过 2 MiB**；建议透明背景。以下是建议制作尺寸，不是服务器硬性限制；系统会按版面等比缩放。
 
 | 个性化位置 | 建议原图尺寸 | 说明 |
 | --- | --- | --- |
@@ -483,7 +500,7 @@ ssh -L 8765:127.0.0.1:8765 youruser@your-vps
 | 辅助标志 | **256 × 256 px** | 正方形，尽量简化细节；实际版面常约 40 px。 |
 | 五种表情/角色图 | **640 × 480 px** | 横向构图、透明背景、主体居中；实际显示常只有约 96 × 68 px 至 112 × 76 px。 |
 
-墨水屏是灰度屏。建议用白、纯黑和一档中灰构图，并在小尺寸下检查眼睛、线条和透明边是否仍然清楚。上传后先在控制台看版式预览，再到实机确认。各版式的落款也在同一页单独配置；未填写的小落款位可由排版工按规则补全，主要正文不会因此被改写。
+墨水屏是灰度屏。建议用白、纯黑和一档中灰构图，并在小尺寸下检查眼睛、线条和透明边是否仍然清楚。上传后先在控制台看版式预览，再到实机确认。各版式的落款也在同一页单独配置；启用排版工后，未填写的小落款位可由它按规则补全，主要正文不会因此被改写。
 
 ---
 
@@ -493,16 +510,16 @@ ssh -L 8765:127.0.0.1:8765 youruser@your-vps
 | --- | --- |
 | 控制台打不开 | PowerShell 窗口/服务是否还在运行；地址是否为本机 `http://127.0.0.1:8765/console`；端口是否被占用。VPS 上检查 `systemctl status mooneink` 和 Nginx。 |
 | 浏览器不能刷机 | 必须用支持 Web Serial 的新版 Chrome/Edge，在电脑本机的 `localhost`/`127.0.0.1` 页面打开；确认 USB 线能传数据。 |
-| 设备只插线才刷新 | 看控制台“设备”的电量、最近回执和 Wi-Fi 状态；确认服务没有随窗口关闭；确认设备连的是 2.4 GHz Wi-Fi。 |
+| 设备只插线才刷新 | 看控制台“设备”的电量、连接状态和最近回执；确认服务没有随窗口关闭；确认设备连的是 2.4 GHz Wi-Fi。 |
 | 作者连不上 MCP | 分清本机地址、局域网地址和公网 HTTPS；端点路径是 `/mcp`；凭据必须用**作者** Bearer，不是管理员 Bearer。 |
 | 投稿不能排版 | 首次 Chromium 下载是否成功；`PLAYWRIGHT_BROWSERS_PATH` 是否指向含 `chromium-1234` 的目录；控制台“报错与回执”有具体错误码。 |
 | VPS 上返回 403 | `network.allowedHosts` 是否包含公网域名；Nginx 是否传了 `Host $host`。 |
 | 设备在 VPS 上连不上 | `deviceChannel.public_endpoint` 是否为公网 HTTPS 根地址；Nginx 是否转发了 `/device/`；防火墙是否放行 443。 |
-| 上传图片没反应 | 是否 PNG、是否超过 2 MiB、是否透明背景；控制台会提示具体错误。 |
+| 上传图片没反应 | 是否为 PNG、是否超过 2 MiB；控制台会提示具体错误。建议使用透明背景，但服务只校验 PNG 格式和大小。 |
 
 ---
 
-## 从源码构建与验证
+## 从源码构建与固件
 
 服务端要求 Node.js **24+**（使用内置 `node:sqlite`，无原生插件）。依赖版本全部锁定在 `package-lock.json`。
 
@@ -512,16 +529,7 @@ npm run typecheck
 npm run build
 ```
 
-运行测试或验证脚本时，测试数据目录必须由环境变量指定，避免把数据库写进源码树：
-
-```bash
-EPHEMERA_TEST_TMP=/tmp/ephemera-test node scripts/verify.mjs publication \
-  --source . \
-  --artifacts /tmp/ephemera-artifacts \
-  --npm-cache /tmp/ephemera-npm-cache
-```
-
-验证档位包括 `foundation`、`renderer`、`persistence`、`publication`、`query`。渲染相关验证需要 `PLAYWRIGHT_BROWSERS_PATH` 指向锁定版本的 Chromium。
+公开仓库不附带完整的内部测试套件；这里的 `typecheck` 和 `build` 是服务端构建检查。
 
 固件工程在 `firmware-source/`，使用 PlatformIO：
 
@@ -530,7 +538,7 @@ cd firmware-source
 pio run -e mooneink_t5_pro_lite
 ```
 
-请先确认你的板型是 H752-01；不同板型的内存类型、分区和显示后端可能不同。
+请先确认你的板型是 H752-01；不同板型的内存类型、分区和显示后端可能不同。固件源码里包含的阅读器仍缺 TF 卡适配与书目扫描、中文书籍排版和离线中文字体包，当前不能当作可用的阅读器。
 
 ---
 
@@ -540,7 +548,7 @@ pio run -e mooneink_t5_pro_lite
 
 本项目的纸张排版代码改编自 [**marikagura/kimi-room**](https://github.com/marikagura/kimi-room)（AGPL-3.0）。改动说明和第三方字体清单见 [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md)。
 
-上游项目中的图片、私人鸢尾花和龙泡泡图片**均未放入本仓库或安装包**；上游图片的 CC BY-NC 条款不会因为代码开源而自动变成可自由商用的图片许可。本仓库里的玫瑰是另行绘制的占位素材。
+上游项目中的图片、项目作者的私人鸢尾花与角色图**均未放入本仓库或安装包**；上游图片的 CC BY-NC 条款不会因为代码开源而自动变成可自由商用的图片许可。本仓库里的玫瑰是另行绘制的占位素材。
 
 字体为 OFL-1.1 授权，许可证文本见 [`licenses/`](licenses/)。
 
@@ -553,7 +561,7 @@ pio run -e mooneink_t5_pro_lite
 ### 隐私与安全
 
 - 不要把数据库、Bearer、Wi-Fi 密码、天气/模型 API Key、上传的私人图片或 `ephemera-private` 推送到公开仓库。
-- 服务只保存 Bearer 的 SHA-256 摘要，不保存原始 Token。
+- MCP 与管理员凭据在配置和数据库中都只保存 SHA-256 摘要；可选的 `console_bearer_file` 是你自己放置的原始作者 Token 文件，请把权限限制为服务用户可读。
 - 管理员与作者使用不同 Bearer，并分别撤销。
 - 公网部署只暴露必要的 `/mcp` 与 `/device/`；控制台建议限制 IP、加代理认证，或只走 SSH 隧道。
 - 提交 Issue 前请去掉日志中的密钥、住址、稿件私人正文和设备标识。
