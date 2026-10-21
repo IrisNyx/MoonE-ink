@@ -330,7 +330,7 @@ never select an arbitrary edition.
 `capabilities.device_channel` remains `false`. A committed multi-page note proves
 server-side publication only; it adds no offered/cached/presented/acknowledged fact.
 
-## Device Channel v1 (`service_version = "0.7.0"`)
+## Device Channel v1 (`service_version = "1.0.0"` in the first public release)
 
 The MCP tool list and `api_schema_version: 2` stay unchanged. Device Channel is a
 separate HTTP surface and is disabled unless deployment configuration explicitly
