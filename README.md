@@ -481,11 +481,10 @@ ssh -L 8765:127.0.0.1:8765 youruser@your-vps
 
 ## 自定义图片：目前是占位符
 
-**请先注意：公开版在没有上传自定义图片时，主标志、辅助标志和五种表情/角色图都会回落到同一张黑白玫瑰占位图（便签的辅助标志位使用内置几何装饰）。**
+**请先注意：在未上传自定义图片时，主标志、辅助标志和五种表情/角色图会显示同一张黑白玫瑰占位图（便签的辅助标志位使用内置几何装饰）。**
 
-- 它不是项目作者的私人图片，也不是上游项目的狐狸图。
-- 占位图位于 [`assets/public/rose-placeholder.svg`](assets/public/rose-placeholder.svg)（PNG 同目录）。
-- 它的作用只是告诉你“这里可以换图”；在控制台上传自己的图片后，对应位置才会显示你的视觉形象。
+- 占位图位于 [`assets/public/rose-placeholder.svg`](assets/public/rose-placeholder.svg)（PNG 同目录），是一张黑白玫瑰，用来标出可替换的图片位置。
+- 在控制台上传自己的图片后，对应位置会显示你的视觉形象。
 - 五种状态分别是：**普通、高兴、悲伤、思考、趴下**。醒来纸、御神签、号外和行程单会按内容选用不同状态；你可以先上传一张通用图，再逐步替换。
 
 ### 推荐上传尺寸
@@ -529,7 +528,7 @@ npm run typecheck
 npm run build
 ```
 
-公开仓库不附带完整的内部测试套件；这里的 `typecheck` 和 `build` 是服务端构建检查。
+这里的 `typecheck` 和 `build` 是服务端构建检查。
 
 固件工程在 `firmware-source/`，使用 PlatformIO：
 
@@ -547,8 +546,6 @@ pio run -e mooneink_t5_pro_lite
 ### 参考项目
 
 本项目的纸张排版代码改编自 [**marikagura/kimi-room**](https://github.com/marikagura/kimi-room)（AGPL-3.0）。改动说明和第三方字体清单见 [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md)。
-
-上游项目中的图片、项目作者的私人鸢尾花与角色图**均未放入本仓库或安装包**；上游图片的 CC BY-NC 条款不会因为代码开源而自动变成可自由商用的图片许可。本仓库里的玫瑰是另行绘制的占位素材。
 
 字体为 OFL-1.1 授权，许可证文本见 [`licenses/`](licenses/)。
 
