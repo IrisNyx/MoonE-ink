@@ -18,6 +18,7 @@ MoonE-ink（服务内部名为 Ephemera）是一套自托管的墨水屏出版�
 - [常见问题](#常见问题)
 - [从源码构建与固件](#从源码构建与固件)
 - [参考项目、协议与隐私](#参考项目协议与隐私)
+- [给自动化代理的配置手册](AGENT-SETUP.md)
 
 ---
 
@@ -76,7 +77,7 @@ MCP 端点是 Streamable HTTP、无会话状态，稿件和状态都落在服务
 
 - 所有稿件、排版、资产、请求账本都存在服务自己的数据目录（SQLite + 内容寻址文件），不依赖外部数据库或消息队列。
 - 服务端投稿账本对同一 `(instance, caller, request_id)` 只产生一次结果；作者工具每次调用使用新的 `request_id`，所以客户端重试会被记为另一篇新稿。
-- 提供全停机的备份、校验、同实例迁移和灾难恢复命令（`scripts/data-admin.mjs`）。
+- 提供全停机的备份、校验、同实例迁移和灾难恢复命令（`scripts/data-admin.mjs`）。当前 1.0.0 发布包中的 `data-admin` 可能仍按旧 schema 校验，执行前先核对工具与服务版本；报 `unsupported data schema` 时不要继续 restore。
 
 ---
 
@@ -281,7 +282,11 @@ cp config.example.json /opt/mooneink/config.json
     "host": "127.0.0.1",              // 只让本机 Nginx 访问
     "port": 8765,
     "dataDir": "/var/lib/mooneink",   // 数据目录，不要放在代码里
-    "timezone": "Asia/Shanghai"
+    "timezone": "Asia/Shanghai",
+    "worker": {                       // 可省略；以下是默认值
+      "leaseDurationMs": 120000,
+      "pollIntervalMs": 2000
+    }
   },
   "network": {
     "allowedHosts": ["127.0.0.1", "ephemera.example.com"],
@@ -307,6 +312,9 @@ cp config.example.json /opt/mooneink/config.json
     "channel_id": "channel_default",
     "publisher_caller_ids": ["author_01"],
     "allowed_profiles": ["epaper-540x960-gray4-v1"]  // 需要横版时加入 "epaper-960x540-gray4-v1"
+  },
+  "logging": {
+    "level": "info"                   // 可省略；默认 info
   }
 }
 ```
@@ -475,6 +483,8 @@ ssh -L 8765:127.0.0.1:8765 youruser@your-vps
   sudo systemctl start mooneink
   ```
 
+  如果 `backup` 报 `unsupported data schema`，说明 `data-admin` 与当前数据库 schema 不一致；先停止操作并核对发布包版本，不要继续 `restore`。
+
 - 迁移到新机器用 `restore --mode migrate`；灾难恢复用 `restore --mode disaster`，后者会轮换实例身份并把恢复时仍在处理的稿件标记为 `unknown_after_restore`，不会自动发布。
 
 ---
@@ -515,6 +525,7 @@ ssh -L 8765:127.0.0.1:8765 youruser@your-vps
 | VPS 上返回 403 | `network.allowedHosts` 是否包含公网域名；Nginx 是否传了 `Host $host`。 |
 | 设备在 VPS 上连不上 | `deviceChannel.public_endpoint` 是否为公网 HTTPS 根地址；Nginx 是否转发了 `/device/`；防火墙是否放行 443。 |
 | 上传图片没反应 | 是否为 PNG、是否超过 2 MiB；控制台会提示具体错误。建议使用透明背景，但服务只校验 PNG 格式和大小。 |
+| 备份报 `unsupported data schema` | `data-admin` 与当前数据库 schema 版本不一致；停止操作、核对发布包版本，不要继续 restore。 |
 
 ---
 
