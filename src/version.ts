@@ -7,7 +7,7 @@
  */
 export const SERVICE_NAME = 'ephemera';
 
-export const SERVICE_VERSION = '1.0.0';
+export const SERVICE_VERSION = '1.0.1';
 
 /** Business API schema version (independent of MCP protocol versions). */
 export const API_SCHEMA_VERSION = 2;

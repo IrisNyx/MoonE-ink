@@ -1,6 +1,6 @@
 {
   "name": "ephemera-mcp-service",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": true,
   "description": "Portable Ephemera MCP service with deterministic rendering, durable publication, query tools and verified backup/restore operations",
   "type": "module",
