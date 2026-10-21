@@ -43,11 +43,10 @@ license: AGPL-3.0-only
 先确认发布资产：
 
 ```bash
-gh release list -R IrisNyx/MoonE-ink
-gh release view v1.0.0 -R IrisNyx/MoonE-ink --json assets --jq '.assets[].name'
+gh release view v1.0.1 -R IrisNyx/MoonE-ink --json assets --jq '.assets[].name'
 # 期望包含：
-# ephemera-mcp-service-1.0.0-public-win32-x64.zip
-# ephemera-mcp-service-1.0.0-public-win32-x64.zip.sha256
+# ephemera-mcp-service-1.0.1-public-win32-x64.zip
+# ephemera-mcp-service-1.0.1-public-win32-x64.zip.sha256
 ```
 
 ---
