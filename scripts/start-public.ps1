@@ -24,6 +24,18 @@ if ($LanAddress -and $LanAddress -notmatch '^(?:\d{1,3}\.){3}\d{1,3}$') {
   throw 'LanAddress must be this computer LAN IPv4 address, such as 192.168.1.25.'
 }
 
+# Check before creating private files or downloading Chromium. Reuse the same
+# executable for the download and service, even if another node is on PATH.
+$nodeCommand = Get-Command node -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
+if (!$nodeCommand) {
+  throw 'Install Node.js 24.22.1 or later in the 24.x line from https://nodejs.org/ and reopen this terminal.'
+}
+$nodeExecutable = $nodeCommand.Source
+& $nodeExecutable (Join-Path $bundle 'dist\src\runtime-security.js')
+if ($LASTEXITCODE -ne 0) {
+  throw 'Unsupported Node.js runtime. Upgrade Node.js before starting Ephemera; private data has not been changed.'
+}
+
 function New-Secret {
   $bytes = [byte[]]::new(32)
   $random = [Security.Cryptography.RandomNumberGenerator]::Create()
@@ -75,7 +87,7 @@ $env:PLAYWRIGHT_BROWSERS_PATH = $browserCache
 if (!(Test-Path -LiteralPath (Join-Path $browserCache 'chromium-1234')) -or
     !(Test-Path -LiteralPath (Join-Path $browserCache 'chromium_headless_shell-1234'))) {
   Write-Host 'Installing the renderer Chromium into the private directory...'
-  & node $playwrightCli install chromium
+  & $nodeExecutable $playwrightCli install chromium
   if ($LASTEXITCODE -ne 0) { throw 'Chromium installation failed; retry when the download is available.' }
 }
 
@@ -84,7 +96,7 @@ Write-Host "Owner Bearer file (keep private): $ownerSecretPath"
 Write-Host 'Keep this window open while using Ephemera; press Ctrl+C to stop.'
 Push-Location $bundle
 try {
-  & node $entry --config $configPath
+  & $nodeExecutable $entry --config $configPath
   exit $LASTEXITCODE
 } finally {
   Pop-Location

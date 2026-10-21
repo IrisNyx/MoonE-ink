@@ -1,3 +1,4 @@
+import './runtime-security.js';
 import { parseArgs } from 'node:util';
 import { CredentialStore } from './auth.js';
 import { loadConfig } from './config.js';

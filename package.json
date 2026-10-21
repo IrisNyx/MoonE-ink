@@ -1,6 +1,6 @@
 {
   "name": "ephemera-mcp-service",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "private": true,
   "description": "Portable Ephemera MCP service with deterministic rendering, durable publication, query tools and verified backup/restore operations",
   "type": "module",
@@ -14,7 +14,7 @@
     "url": "https://github.com/IrisNyx/MoonE-ink/issues"
   },
   "engines": {
-    "node": ">=24"
+    "node": "^24.22.1 || >=26.12.1"
   },
   "bin": {
     "ephemera-mcp": "dist/src/index.js",
@@ -26,7 +26,10 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "start": "node dist/src/index.js",
     "data": "node scripts/data-admin.mjs",
-    "simulate:device": "node scripts/device-simulator.mjs"
+    "simulate:device": "node scripts/device-simulator.mjs",
+    "check:runtime": "node dist/src/runtime-security.js",
+    "test": "node --test dist/test/*.test.js",
+    "release": "npm run build && node scripts/build-release.mjs"
   },
   "dependencies": {
     "@modelcontextprotocol/node": "2.1.1",

@@ -5,7 +5,7 @@
 ```yaml
 project: MoonE-ink
 service: ephemera
-runtime: Node.js >= 24
+runtime: Node.js ^24.22.1 || >=26.12.1
 default_port: 8765
 mcp_endpoint: /mcp
 console_path: /console
@@ -19,9 +19,11 @@ license: AGPL-3.0-only
 
 ---
 
+> 1.0.2 会拒绝缺少证书安全修复的 Node。安装包不附带 Node；升级系统 Node 后应重启终端和服务管理器，核对实际运行版本。Node 25 已结束支持。
+
 ## 0. 硬约束
 
-1. Node.js 必须是 **24 或更新版本**；服务使用内置 `node:sqlite`。
+1. Node.js 必须是 **24.22.1 或更新的 24.x，或 26.12.1 及以上正式版**；服务使用内置 `node:sqlite`。
 2. 排版使用锁定的 Chromium revision **1234**（`playwright-core` 1.62.0）。没有它服务仍能启动，但 `publish` 能力为 `false`，投稿会被拒绝。
 3. 配置文件是 **strict JSON**：未知字段会让进程以退出码 `2` 退出。
 4. 作者凭据必须显式设置 `"tool_view": "author"`。省略时默认值不是作者工具面。
@@ -43,10 +45,10 @@ license: AGPL-3.0-only
 先确认发布资产：
 
 ```bash
-gh release view v1.0.1 -R IrisNyx/MoonE-ink --json assets --jq '.assets[].name'
+gh release view v1.0.2 -R IrisNyx/MoonE-ink --json assets --jq '.assets[].name'
 # 期望包含：
-# ephemera-mcp-service-1.0.1-public-win32-x64.zip
-# ephemera-mcp-service-1.0.1-public-win32-x64.zip.sha256
+# ephemera-mcp-service-1.0.2-public-win32-x64.zip
+# ephemera-mcp-service-1.0.2-public-win32-x64.zip.sha256
 ```
 
 ---
@@ -57,7 +59,7 @@ gh release view v1.0.1 -R IrisNyx/MoonE-ink --json assets --jq '.assets[].name'
 
 1. 下载 `ephemera-mcp-service-*-public-win32-x64.zip`。
 2. 完整解压到一个固定目录。不要只取其中的 `firmware.bin`。
-3. 安装 Node.js 24+。
+3. 安装 Node.js 24.22.1+（24.x），或 26.12.1+。
 4. 查本机局域网 IPv4：
 
 ```powershell
@@ -273,7 +275,7 @@ node dist/src/index.js --config C:/mooneink-data/config.json
 
 以下以 Ubuntu 22.04/24.04 为例。
 
-### 4.1 安装 Node.js 24
+### 4.1 安装 Node.js 24.22.1 或更新的 24.x
 
 ```bash
 sudo apt update
@@ -642,7 +644,7 @@ curl -sS -X POST http://127.0.0.1:8765/mcp \
 
 ## 10. 代理交付检查清单
 
-- [ ] Node.js `>= 24`
+- [ ] Node.js `^24.22.1 || >=26.12.1`
 - [ ] `npm ci && npm run build` 成功（源码路径）
 - [ ] `PLAYWRIGHT_BROWSERS_PATH` 含 `chromium-1234` 和 `chromium_headless_shell-1234`
 - [ ] 配置文件是 strict JSON，`server.dataDir` 为绝对路径

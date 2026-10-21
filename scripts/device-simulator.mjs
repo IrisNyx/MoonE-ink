@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import '../dist/src/runtime-security.js';
 import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';

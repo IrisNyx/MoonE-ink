@@ -8,6 +8,8 @@ MoonE-ink（服务内部名为 Ephemera）是一套自托管的墨水屏出版�
 
 ---
 
+> **1.0.2 安全更新**：安装包不附带 Node.js。请先升级系统 Node，再重启终端、PM2 或系统服务，并用 `node --version` 确认实际版本。旧 Node 24、Node 25 和早期 Node 26 会在服务启动前被拒绝；直接运行 `node dist/src/index.js` 也会检查。已有配置和稿件仍保存在包外的私人目录，无需删除或重新生成。
+
 ## 目录
 
 - [它能做什么](#它能做什么)
@@ -85,7 +87,7 @@ MCP 端点是 Streamable HTTP、无会话状态，稿件和状态都落在服务
 
 **已验证范围**
 
-- 服务：Windows x64，Node.js 24。
+- 服务：Windows x64，Node.js 24.22.1。
 - 设备：LILYGO T5 4.7 S3 Pro Lite（H752-01），540 × 960 竖屏。
 - 公开安装包只对上述组合做过本地启动/构建检查；首次 USB 刷写、跨设备局域网、长期续航仍需要不同用户实机复验。
 
@@ -109,7 +111,7 @@ MCP 端点是 Streamable HTTP、无会话状态，稿件和状态都落在服务
 **准备**
 
 1. Windows 10/11 x64 电脑。
-2. [Node.js 24 或更新版本](https://nodejs.org/)。
+2. [Node.js 24.22.1 或更新的 24.x（推荐），或 26.12.1 及以上正式版](https://nodejs.org/)。
 3. 能传数据的 USB 线（不是只能充电的线）。
 4. LILYGO T5 4.7 S3 Pro Lite（H752-01）墨水屏。
 5. 电脑和墨水屏都连同一个 **2.4 GHz Wi-Fi**。
@@ -229,7 +231,7 @@ node dist/src/index.js --config config.local.json
 
 以下以 Ubuntu 22.04/24.04 + Nginx + systemd 为例。
 
-### 1. 安装 Node.js 24
+### 1. 安装 Node.js 24.22.1 或更新的 24.x
 
 ```bash
 sudo apt update
@@ -531,7 +533,7 @@ ssh -L 8765:127.0.0.1:8765 youruser@your-vps
 
 ## 从源码构建与固件
 
-服务端要求 Node.js **24+**（使用内置 `node:sqlite`，无原生插件）。依赖版本全部锁定在 `package-lock.json`。
+服务端要求 Node.js **24.22.1+（24.x）或 26.12.1+**（使用内置 `node:sqlite`，无原生插件）。依赖版本全部锁定在 `package-lock.json`。
 
 ```bash
 npm ci
@@ -573,3 +575,9 @@ pio run -e mooneink_t5_pro_lite
 - 管理员与作者使用不同 Bearer，并分别撤销。
 - 公网部署只暴露必要的 `/mcp` 与 `/device/`；控制台建议限制 IP、加代理认证，或只走 SSH 隧道。
 - 提交 Issue 前请去掉日志中的密钥、住址、稿件私人正文和设备标识。
+
+## 构建公开安装包
+
+使用满足上述安全版本要求的 Node，运行 `npm ci --ignore-scripts`、`npm run build`、`npm test`。提交本次源码后，运行 `npm run release -- <仓库外的新输出目录>`。构建器只复制 Git 跟踪的公开源码、构建产物与锁定的生产依赖，并生成含源码提交、运行时要求和全部文件 SHA-256 的 `release-manifest.json`。打包该完整目录；私人配置和数据库始终放在包外。
+
+证书安全更新依据：[Node 24.22.1](https://nodejs.org/en/blog/release/v24.22.1/) 与 [Node 26.12.1](https://github.com/nodejs/node/releases/tag/v26.12.1)。

@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import '../dist/src/runtime-security.js';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import {
   copyFileSync,
