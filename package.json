@@ -1,0 +1,51 @@
+{
+  "name": "ephemera-mcp-service",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Portable Ephemera MCP service with deterministic rendering, durable publication, query tools and verified backup/restore operations",
+  "type": "module",
+  "license": "AGPL-3.0-only",
+  "homepage": "https://github.com/IrisNyx/MoonE-ink#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/IrisNyx/MoonE-ink.git"
+  },
+  "bugs": {
+    "url": "https://github.com/IrisNyx/MoonE-ink/issues"
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "bin": {
+    "ephemera-mcp": "dist/src/index.js",
+    "ephemera-data": "scripts/data-admin.mjs",
+    "ephemera-device-simulator": "scripts/device-simulator.mjs"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "start": "node dist/src/index.js",
+    "data": "node scripts/data-admin.mjs",
+    "simulate:device": "node scripts/device-simulator.mjs"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/node": "2.1.1",
+    "@modelcontextprotocol/server": "2.3.1",
+    "astronomy-engine": "2.1.19",
+    "esptool-js": "0.6.1",
+    "fontkit": "2.0.4",
+    "lunar-javascript": "1.7.7",
+    "playwright-core": "1.62.0",
+    "pngjs": "7.0.0",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "zod": "4.6.5"
+  },
+  "devDependencies": {
+    "@modelcontextprotocol/client": "2.3.1",
+    "@types/node": "24.19.1",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "typescript": "5.9.3"
+  }
+}

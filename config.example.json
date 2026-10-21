@@ -1,0 +1,73 @@
+{
+  "server": {
+    "host": "127.0.0.1",
+    "port": 8765,
+    "dataDir": "CHANGE-ME-absolute-or-relative-data-directory",
+    "timezone": "Asia/Shanghai",
+    "maxPendingOperations": 100,
+    "terminalPublishBudgetMs": 20000,
+    "maxHttpBodyBytes": 262144,
+    "sseKeepAliveMs": 15000,
+    "worker": {
+      "leaseDurationMs": 120000,
+      "pollIntervalMs": 2000
+    }
+  },
+  "network": {
+    "allowedHosts": ["localhost", "127.0.0.1", "[::1]"],
+    "allowedOrigins": []
+  },
+  "auth": {
+    "mode": "static-bearer",
+    "console_bearer_file": "secrets/mcp-publisher.txt",
+    "credentials": [
+      {
+        "credential_id": "cred_REPLACE_ME_1",
+        "caller_id": "caller_REPLACE_ME",
+        "token_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+        "tool_view": "author",
+        "revoked": false
+      },
+      {
+        "credential_id": "cred_REPLACE_ME_2_revoked_example",
+        "caller_id": "caller_REPLACE_ME",
+        "token_sha256": "1111111111111111111111111111111111111111111111111111111111111111",
+        "tool_view": "internal",
+        "revoked": true
+      }
+    ]
+  },
+  "deviceChannel": {
+    "enabled": false,
+    "owner_token_sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+    "public_endpoint": "https://ephemera.example.invalid",
+    "channel_id": "channel_default",
+    "publisher_caller_ids": ["caller_REPLACE_ME"],
+    "allowed_profiles": ["epaper-540x960-gray4-v1"],
+    "pairing_ttl_seconds": 900,
+    "pairing_max_attempts": 5,
+    "limits": {
+      "max_pages_per_edition": 16,
+      "max_pages_response_bytes": 262144,
+      "max_history_response_bytes": 262144,
+      "max_actions_per_frame": 6,
+      "max_string_bytes": 4096,
+      "max_json_depth": 8,
+      "max_event_body_bytes": 32768,
+      "max_history_items": 50,
+      "request_timeout_ms": 15000,
+      "asset_download_timeout_ms": 30000
+    }
+  },
+  "typesetter": {
+    "enabled": false,
+    "endpoint": "https://typesetter.example.invalid/v1",
+    "model": "vision-model-id",
+    "apiKeyEnv": "EPHEMERA_TYPESETTER_API_KEY",
+    "timeoutMs": 8000,
+    "commitReserveMs": 1000
+  },
+  "logging": {
+    "level": "info"
+  }
+}

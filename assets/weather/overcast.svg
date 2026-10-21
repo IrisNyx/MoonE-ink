@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" fill="none" role="img" aria-labelledby="title">
+  <title id="title">阴</title>
+  <g stroke="#333333" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M43 48c-7 0-12-5-12-11s5-12 12-12c2-9 10-13 18-11 7 1 12 7 13 14 8 0 14 5 14 11s-5 9-12 9H43Z" fill="#888888"/>
+    <path d="M24 74C15 74 8 68 8 59s7-16 16-16h2c2-12 11-19 22-17 10 1 17 9 18 19 10-1 19 6 19 15 0 8-7 14-16 14H24Z" fill="#BBBBBB"/>
+    <path d="M26 43c6 1 11 5 13 10M66 45c-4 0-8 2-10 5" stroke="#666666"/>
+    <path d="M24 82h20M53 82h20" stroke="#888888"/>
+  </g>
+</svg>

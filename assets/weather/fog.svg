@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" fill="none" role="img" aria-labelledby="title">
+  <title id="title">雾</title>
+  <g stroke="#333333" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M24 54C15 54 8 48 8 39s7-16 16-16h2c2-10 11-17 22-15 10 1 17 9 18 18 10-1 19 5 19 14 0 8-7 14-16 14H24Z" fill="#DDDDDD"/>
+    <path d="M26 23c6 1 11 5 13 10M66 26c-4 0-8 2-10 5" stroke="#888888"/>
+    <path d="M13 65h43M65 65h18M8 75h20M38 75h43M19 85h43M71 85h12" stroke="#888888" stroke-width="3.4"/>
+  </g>
+</svg>

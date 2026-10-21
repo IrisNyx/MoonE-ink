@@ -1,0 +1,15 @@
+# Ephemera 公开版快速开始（Windows）
+
+本包是独立的服务与墨水屏安装包。默认图是黑白玫瑰占位图；自己的落款、主/小 Logo 和五种表情图，都在网页控制台中另行上传。不要把私人配置、数据库、图片和 Bearer 放回发布目录。
+
+1. 安装 Node.js 24 或更新版本，完整解压本包。首次启动需要联网下载与排版器版本匹配的 Chromium。
+2. 在 PowerShell 中进入解压目录，运行 `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/start-public.ps1`。脚本会在包的**同级**创建 `ephemera-private`，随机生成两把 Bearer，下载 Chromium，启动服务；再次运行沿用原配置。
+3. 打开 `http://127.0.0.1:8765/console`，用 `ephemera-private/secrets/owner-bearer.txt` 中的管理员 Bearer 登录。作者 MCP Bearer 在 `ephemera-private/secrets/author-bearer.txt`，只给你信任的作者模型；两把密钥不能混用。
+4. 要让墨水屏通过 Wi-Fi 连到这台电脑，首次启动前先查电脑的局域网 IPv4 地址，再用 `-LanAddress 192.168.1.25` 这样的参数运行脚本（换成你的实际地址）。只开放所需的局域网入站；不要直接将管理控制台暴露到公网。随后在控制台“设备”页一键刷入固件并配置 Wi-Fi、配对地址。
+5. 排版工模型和天气服务都是可选项，在控制台里单独配置；没有配置时不要让作者声称获得了真实天气。手机作者端若需远程 MCP，应自行配置只转发 `/mcp` 的 HTTPS 隧道，并给它独立的可撤销 Bearer。
+
+脚本前台运行，关闭窗口服务就停止；要长期无人值守，需要另外配置服务管理器或开机任务。浏览器安装失败时可联网重跑脚本，原有稿件不会删除。设备续航仍在实机观察中；建议发布说明不要承诺“一充能用几天”。
+
+如果向远程用户提供这个经过修改的 AGPL 服务，需要向这些网络用户显著提供对应源码的获取入口。包里已经附有源码，但线上入口仍须在实际发布后设置并核对；不要把私人工作目录当作源码下载地址。
+
+源码、协议与第三方字体说明见 `LICENSE`、`THIRD_PARTY_NOTICES.md`、`firmware-source/`。此包是公开发行物，不要把整个开发工作目录直接上传。

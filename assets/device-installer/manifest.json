@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "product": "mooneink-t5-pro-lite",
+  "chip": "ESP32-S3",
+  "release_id": "09e9d465cd2043c2",
+  "flash_mode": "keep",
+  "flash_frequency": "keep",
+  "flash_size": "keep",
+  "erase_all": true,
+  "segments": [
+    {
+      "name": "bootloader.bin",
+      "address": 0,
+      "bytes": 15104,
+      "sha256": "1051ac3e564bb9368a635af94a219d01c6263dc7a89a5e132bd01fef925026a2"
+    },
+    {
+      "name": "partitions.bin",
+      "address": 32768,
+      "bytes": 3072,
+      "sha256": "b7467eda97be48cdace8c13b88253aa21ee83c107fcfd42368a823a8a8e57c03"
+    },
+    {
+      "name": "firmware.bin",
+      "address": 65536,
+      "bytes": 2326464,
+      "sha256": "345e4fa03a290bc252247fcbbc109457b945aacf664cf60d75ae8ff4c6741cee"
+    }
+  ]
+}

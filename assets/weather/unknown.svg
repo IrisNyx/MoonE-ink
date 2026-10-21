@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" fill="none" role="img" aria-labelledby="title">
+  <title id="title">当前天气未知</title>
+  <g stroke="#333333" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M24 76C15 76 8 70 8 61s7-16 16-16h2c2-12 11-19 22-17 10 1 17 9 18 19 10-1 19 6 19 15 0 8-7 14-16 14H24Z" fill="#DDDDDD"/>
+    <path d="M41 47c0-8 14-9 14-1 0 5-7 6-7 11"/>
+    <circle cx="48" cy="65" r="1.8" fill="#333333" stroke="none"/>
+  </g>
+</svg>
