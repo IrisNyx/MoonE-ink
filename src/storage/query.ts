@@ -14,7 +14,7 @@
 
 import { DatabaseSync } from 'node:sqlite';
 import { BusinessError } from '../errors.js';
-import { GENRE_CONTENT_SCHEMA, contentDisplayText } from '../domain/genre-content.js';
+import { STORED_GENRE_CONTENT_SCHEMA, contentDisplayText } from '../domain/genre-content.js';
 import type {
   CursorRecord,
   PublicationRecordView,
@@ -285,7 +285,7 @@ export class SqliteQueryRepository implements QueryRepository {
         if (typeof manuscript.body !== 'string') throw storageUnavailable();
         let authorText = manuscript.body;
         if (manuscript.content !== undefined) {
-          const parsed = GENRE_CONTENT_SCHEMA.safeParse(manuscript.content);
+          const parsed = STORED_GENRE_CONTENT_SCHEMA.safeParse(manuscript.content);
           if (!parsed.success) throw storageUnavailable();
           authorText = contentDisplayText(parsed.data);
         }

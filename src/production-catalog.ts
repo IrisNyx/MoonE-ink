@@ -1,7 +1,7 @@
 import { canonicalJsonBytes } from './domain/canonical.js';
 import { GENRE_CONTENT_GUIDES } from './domain/genre-content.js';
 
-export const PRODUCTION_CATALOG_REVISION = 'production-catalog-2026-10-21.2';
+export const PRODUCTION_CATALOG_REVISION = 'production-catalog-2026-10-23.1';
 export const PRODUCTION_RESOURCES_REVISION = 'ephemera-device-readable-v4';
 
 /** The complete visual library that has already passed the device readability review. */

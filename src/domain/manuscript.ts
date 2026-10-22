@@ -33,7 +33,7 @@ import {
   type ProductionGenreId,
 } from '../production-catalog.js';
 import {
-  GENRE_CONTENT_SCHEMA,
+  STORED_GENRE_CONTENT_SCHEMA,
   contentPrimaryText,
   genreForContent,
   type GenreContent,
@@ -593,7 +593,7 @@ export function validateManuscript(input: unknown): ValidatedManuscript {
 
   let content: GenreContent | undefined;
   if (isV3 && input.content !== undefined) {
-    const parsed = GENRE_CONTENT_SCHEMA.safeParse(input.content);
+    const parsed = STORED_GENRE_CONTENT_SCHEMA.safeParse(input.content);
     if (!parsed.success) {
       throw invalid('content does not match the selected genre contract');
     }

@@ -3,6 +3,7 @@ import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { isSecureNodeVersion, SECURE_NODE_RANGE } from '../src/runtime-security.js';
+import { SERVICE_VERSION } from '../src/version.js';
 
 test('accepts patched versions and rejects affected branches and prereleases', () => {
   for (const version of ['24.22.1', 'v24.22.2', '24.23.0', '26.12.1', '26.13.0', '27.0.0']) {
@@ -13,6 +14,7 @@ test('accepts patched versions and rejects affected branches and prereleases', (
   }
   const pkg = JSON.parse(readFileSync(new URL('../../package.json', import.meta.url), 'utf8'));
   assert.equal(pkg.engines.node, SECURE_NODE_RANGE);
+  assert.equal(pkg.version, SERVICE_VERSION);
 });
 
 test('direct service and command entry points reject an affected runtime before reading configuration', () => {

@@ -382,13 +382,13 @@ export class SqlitePublicationRepository implements PublicationRepository {
     }
   }
 
-  failOperation(operationId: string, leaseId: string, code: OperationFailureCode, nowIso: string): void {
+  failOperation(operationId: string, leaseId: string, code: OperationFailureCode, nowIso: string, detail?: string): void {
     try {
       const result = this.db
         .prepare(
-          "UPDATE operation SET status = 'failed', lease_id = NULL, lease_expires_at = NULL, failure_code = ?, completed_at = ? WHERE operation_id = ? AND status = 'processing' AND lease_id = ?",
+          "UPDATE operation SET status = 'failed', lease_id = NULL, lease_expires_at = NULL, failure_code = ?, terminal_detail = ?, completed_at = ? WHERE operation_id = ? AND status = 'processing' AND lease_id = ?",
         )
-        .run(code, nowIso, operationId, leaseId);
+        .run(code, detail ?? null, nowIso, operationId, leaseId);
       if (result.changes !== 1) {
         throw storageUnavailable();
       }

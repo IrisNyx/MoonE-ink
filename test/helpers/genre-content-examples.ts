@@ -1,0 +1,27 @@
+import type { EnabledGenreId, GenreContent } from '../../src/domain/genre-content.js';
+
+export const CONTENT_EXAMPLES: Record<EnabledGenreId, GenreContent> = {
+  note: { kind: 'note', text: '正文原样保留。' },
+  wakepaper: { kind: 'wakepaper', nightText: '夜里一切安稳。', todayPins: [{ time: '08:30', item: '带伞' }], oneLine: '醒来慢一点。' },
+  weather: { kind: 'weather', commentary: '雨会让窗边很安静。', closing: '出门记得带伞。' },
+  almanac: { kind: 'almanac', suitable: '慢慢吃早饭', avoid: '匆忙出门', closing: '今天也稳稳地过。' },
+  postcard: { kind: 'postcard', message: '从远处寄来一阵风。', sentFrom: '湖边', closing: '等我回来。' },
+  'boarding-pass': { kind: 'boarding-pass', origin: '家', destination: '海边', passenger: '小月亮', seat: '01A', gate: '月台', boardingTime: '清晨', message: '一路平安。' },
+  itinerary: { kind: 'itinerary', entries: [{ time: '09:00', text: '在车站见面', english: 'MEET AT THE STATION', mark: 'I' }], closing: '不要赶。' },
+  passport: { kind: 'passport', holder: '旅人', stamps: [{ place: '杭州', english: 'HANGZHOU', date: '10.13', travellingAlone: false }], closing: '同行。' },
+  customs: { kind: 'customs', items: [{ item: '一路月光', quantity: '一袋', taxable: false, note: '易碎' }], summary: '全部带回家。' },
+  iou: { kind: 'iou', declaration: '记名在此。', reason: '上次错过了散步', obligation: '陪你走完河边的路',
+    settlement: { when: '本周六傍晚', method: '一起慢慢走一圈' }, note: '此据收讫存档。', closing: '长期有效。' },
+  'ticket-stub': { kind: 'ticket-stub', promise: '一起看完那场电影', fulfilledAt: '2026-10-12 晚上',
+    fulfillment: '已经坐在最后一排看完，回家路上还聊了结局', closing: '不设有效期。' },
+  telegram: { kind: 'telegram', lines: ['ARRIVE SAFE', 'MISS YOU'] },
+  extra: { kind: 'extra', report: '今天有一件值得庆祝的事。', englishSubtitle: 'GOOD NEWS', closing: '号外完。' },
+  prescription: { kind: 'prescription', complaint: '最近睡得太晚', items: [{ instruction: '早点休息', dosage: '今晚一次' }], closing: '不是医疗诊断。' },
+  checkup: { kind: 'checkup', items: [{ item: '心情', grade: 'B', note: '下午更轻松', highlight: true }], overall: '今天状态尚可。', closing: '照顾好自己。' },
+  'night-log': { kind: 'night-log', entries: [{ time: '22:10', event: '已经回复家人的消息', tag: '通信' }], handover: '没有未完成事项。' },
+  starmap: { kind: 'starmap', nightText: '这是为今晚虚构的一片星空。', caption: '狐狸座旁的一颗星', closing: '晚安。' },
+  poem: { kind: 'poem', text: '月光落下\n窗边很静\n等你醒来' },
+  omikuji: { kind: 'omikuji', level: '小吉', poem: ['风来不急', '花开有时'], interpretation: '慢慢走也会抵达。', englishSubtitle: 'A GENTLE FORTUNE' },
+  emblem: { kind: 'emblem', memorialText: '把这一天留在纸上。', englishSubtitle: 'A DAY TO KEEP', closing: '长久珍藏。' },
+  programme: { kind: 'programme', entries: [{ time: '第一幕', text: '一起吃晚饭', english: 'DINNER', act: 'I' }], closing: '终场后回家。' },
+};

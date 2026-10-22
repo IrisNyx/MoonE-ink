@@ -37,7 +37,7 @@ function previewManuscript(layoutId: ProductionLayoutId, genre: ProductionGenreI
       ? { kind: 'ticket-stub', promise: '一起看完那场电影', fulfilledAt: '2026-10-12 晚上',
           fulfillment: '已经坐在最后一排看完，回家路上还聊了结局', closing: '这张留作纪念。' }
       : genre === 'poem'
-        ? { kind: 'poem', lines: ['月光落下', '窗边很静', '等你醒来'] }
+        ? { kind: 'poem', text: '月光落下\n窗边很静\n等你醒来' }
         : genre === 'prescription'
           ? { kind: 'prescription', complaint: '最近睡得太晚，眼睛有些发涩。',
               items: [{ instruction: '早点休息', dosage: '今晚一次' }], closing: '照顾好自己。' }

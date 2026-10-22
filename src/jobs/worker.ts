@@ -400,7 +400,9 @@ export class PublicationWorker {
     try {
       manuscript = validateManuscript(JSON.parse(Buffer.from(job.canonical).toString('utf8'))).manuscript;
     } catch {
-      this.terminate(job, 'invalid_input');
+      // This snapshot already passed acceptance; failure to read it is a
+      // publication-service failure, not a request to rewrite the manuscript.
+      this.terminate(job, 'render_failed');
       return;
     }
 
@@ -552,9 +554,13 @@ export class PublicationWorker {
         throw error;
       }
       if (error instanceof RenderError) {
+        if (error.code === 'unsupported_glyph' && error.message.includes('template text')) {
+          this.terminate(job, 'render_failed');
+          return;
+        }
         const terminal = PERMANENT_TERMINAL_CODES.get(error.code);
         if (terminal !== undefined) {
-          this.terminate(job, terminal);
+          this.terminate(job, terminal, error.message);
           return;
         }
         // A deterministic author-content integrity violation also has no
@@ -960,9 +966,9 @@ export class PublicationWorker {
     }
   }
 
-  private terminate(job: ClaimedJob, code: OperationFailureCode): void {
+  private terminate(job: ClaimedJob, code: OperationFailureCode, detail?: string): void {
     try {
-      this.repository.failOperation(job.operation_id, job.lease_id, code, this.now().toISOString());
+      this.repository.failOperation(job.operation_id, job.lease_id, code, this.now().toISOString(), detail);
       this.log?.warn('operation_failed', { operation_id: job.operation_id, code });
     } catch (error) {
       this.log?.warn('worker_bookkeeping_failed', {

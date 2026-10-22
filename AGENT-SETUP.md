@@ -24,7 +24,7 @@ license: AGPL-3.0-only
 ## 0. 硬约束
 
 1. Node.js 必须是 **24.22.1 或更新的 24.x，或 26.12.1 及以上正式版**；服务使用内置 `node:sqlite`。
-2. 排版使用锁定的 Chromium revision **1234**（`playwright-core` 1.62.0）。没有它服务仍能启动，但 `publish` 能力为 `false`，投稿会被拒绝。
+2. 排版使用锁定的 Chromium revision **1234**（`playwright-core` 1.62.0）。没有它服务仍能启动，但 `publish` 能力为 `false`，作者投稿返回 `unavailable`，不要求作者改稿。
 3. 配置文件是 **strict JSON**：未知字段会让进程以退出码 `2` 退出。
 4. 作者凭据必须显式设置 `"tool_view": "author"`。省略时默认值不是作者工具面。
 5. 管理只走网页控制台和 `/admin/v1/*`，不经过 MCP。不要把管理员 Bearer 交给作者模型。
@@ -45,10 +45,10 @@ license: AGPL-3.0-only
 先确认发布资产：
 
 ```bash
-gh release view v1.0.2 -R IrisNyx/MoonE-ink --json assets --jq '.assets[].name'
+gh release view v1.0.3 -R IrisNyx/MoonE-ink --json assets --jq '.assets[].name'
 # 期望包含：
-# ephemera-mcp-service-1.0.2-public-win32-x64.zip
-# ephemera-mcp-service-1.0.2-public-win32-x64.zip.sha256
+# ephemera-mcp-service-1.0.3-public-win32-x64.zip
+# ephemera-mcp-service-1.0.3-public-win32-x64.zip.sha256
 ```
 
 ---
@@ -558,7 +558,7 @@ curl -sS -X POST http://127.0.0.1:8765/mcp \
 {"status":"published","work":{"genre":"note","page_count":1}}
 ```
 
-如果返回 `unsupported_glyph`，说明正文含字体子集未覆盖的字符；冒烟测试请用 ASCII。
+如果收到 `rejected` 且意见指出作者正文缺字，说明字体子集未覆盖相应字符；冒烟测试可用 ASCII。模板或排版服务故障返回 `unavailable`，不要求作者改稿。
 
 ### 6.3 语义
 
@@ -566,6 +566,11 @@ curl -sS -X POST http://127.0.0.1:8765/mcp \
 - 气象稿必须先调用 `ephemera_peek` 且 `scope=weather`，读取真实预报后再投稿。
 - `ephemera_peek` 只返回调用者自己的作品；不是设备状态接口。
 - `published` 只表示服务端已提交，不等于设备已缓存或已上屏。
+- `rejected` 是正常工具结果，带 `message` 和 `issues[{field,message,suggestion}]`；按意见修订稿件，不应当作 MCP 连接错误。
+- `unavailable` 表示服务本次无法完成出版，不要求修改稿件；`unconfirmed` 表示已进入出版流程但结果暂时无法确认，应先 `ephemera_peek`，避免立即重投导致重复作品。
+- 诗稿使用 `content: {"kind":"poem","text":"第一行\n第二行"}`；空行与原文保留。升级后刷新工具列表，不再按旧 `content.lines` 数组填写；已保存的旧诗稿仍可读取和处理。
+
+本次根因、回执示例与回归验证见 [1.0.3 修复说明](docs/releases/1.0.3.md)。
 
 ---
 

@@ -2,7 +2,7 @@ import { createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypt
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { isAbsolute, join, relative, sep } from 'node:path';
 import { canonicalJsonBytes } from '../domain/canonical.js';
-import { contentDisplayText, GENRE_CONTENT_SCHEMA } from '../domain/genre-content.js';
+import { contentDisplayText, STORED_GENRE_CONTENT_SCHEMA } from '../domain/genre-content.js';
 import type { EphemeraConfig } from '../config.js';
 import { DeviceRepositoryError } from './repository.js';
 import {
@@ -147,7 +147,7 @@ function listText(blob: Uint8Array): { title: string | null; label: string; summ
   };
   let text = typeof manuscript.body === 'string' ? manuscript.body : '';
   if (manuscript.content !== undefined) {
-    const parsed = GENRE_CONTENT_SCHEMA.safeParse(manuscript.content);
+    const parsed = STORED_GENRE_CONTENT_SCHEMA.safeParse(manuscript.content);
     if (parsed.success) text = contentDisplayText(parsed.data);
   }
   const title = typeof manuscript.title === 'string' && manuscript.title.trim().length > 0

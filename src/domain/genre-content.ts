@@ -198,7 +198,7 @@ export const starmapContentSchema = z.strictObject({
 
 export const poemContentSchema = z.strictObject({
   kind: z.literal('poem'),
-  lines: textLines('作者原始的一行诗；数组顺序和分行会原样保留。', 64),
+  text: mainText('完整诗稿字符串；用换行符（JSON 中写作 \\n）分行，保留原文、空行和顺序。单句是否过长由实际排版检查，不会自动折行或删改。', 65_536),
 });
 
 export const omikujiContentSchema = z.strictObject({
@@ -251,8 +251,22 @@ export const GENRE_CONTENT_SCHEMA = z.discriminatedUnion('kind', [
   programmeContentSchema,
 ]);
 
-export type GenreContent = z.infer<typeof GENRE_CONTENT_SCHEMA>;
+// Published snapshots and queued jobs may still contain the original line
+// array. Read them without migrating the author's stored content or digest.
+export const STORED_GENRE_CONTENT_SCHEMA = z.union([
+  GENRE_CONTENT_SCHEMA,
+  z.strictObject({ kind: z.literal('poem'), lines: textLines('原始诗行', 64) }),
+]);
+export type GenreContent = z.infer<typeof STORED_GENRE_CONTENT_SCHEMA>;
 export type EnabledGenreId = GenreContent['kind'];
+
+function poemText(content: Extract<GenreContent, { kind: 'poem' }>): string {
+  return 'text' in content ? content.text : content.lines.join('\n');
+}
+
+function poemLines(content: Extract<GenreContent, { kind: 'poem' }>): string[] {
+  return 'text' in content ? content.text.split(/\r\n|\r|\n/) : [...content.lines];
+}
 
 export interface GenreContentGuide {
   name_zh: string;
@@ -393,7 +407,7 @@ export function applyEditorAdditions(content: GenreContent, additions: readonly 
     if (typeof current !== 'object' || current === null || Array.isArray(current)) throw new Error('editor addition path is invalid');
     (current as Record<string, unknown>)[leaf] = addition.value;
   }
-  return GENRE_CONTENT_SCHEMA.parse(copy);
+  return STORED_GENRE_CONTENT_SCHEMA.parse(copy);
 }
 
 /** Presentation-only model decision; it never becomes author content. */
@@ -422,7 +436,7 @@ export const GENRE_CONTENT_GUIDES: Readonly<Record<EnabledGenreId, GenreContentG
   checkup: { name_zh: '健診表', writing_zh: '按作者掌握的资料列检查项目与评级。', primary_zh: '项目、评级、总评', optional_zh: '备注、关怀题注', facts_zh: '右侧出版日期由服务填写；不自动评级' },
   'night-log': { name_zh: '夜航日志', writing_zh: '按时刻记录夜里真实发生或作者明确创作的片段。', primary_zh: '时间与完整事件条目', optional_zh: '标签、交班文字', facts_zh: '右侧出版日期由服务填写；完成式行动须有真实记录' },
   starmap: { name_zh: '某夜星空', writing_zh: '虚拟星空与文学场景，不代表真实观测。', primary_zh: '当夜文字', optional_zh: '图注、寄语、收尾', facts_zh: '右侧日期和真实出版时间由服务填写；已有有效天气快照时追加天气，否则省略；不接星历或观测源' },
-  poem: { name_zh: '诗', writing_zh: '逐行提交，原顺序和断行不变。', primary_zh: '完整诗行列表', optional_zh: '无', facts_zh: '出版日期由服务填写' },
+  poem: { name_zh: '诗', writing_zh: '用 content.text 提交整首诗，以换行符（JSON 中写作 \\n）分行；原文和空行保留，单句过长由排版工退回并说明。', primary_zh: '完整诗稿字符串', optional_zh: '无', facts_zh: '出版日期由服务填写' },
   omikuji: { name_zh: '御神签', writing_zh: '作者创作的签级、签诗与签意，不冒充预测。', primary_zh: '签级、签诗、核心签意', optional_zh: '英文副题', facts_zh: '无' },
   emblem: { name_zh: '印记徽', writing_zh: '纪念日或关系里程碑的文字，可分页。', primary_zh: '纪念标题和纪念文字', optional_zh: '标题下方的大标题英文翻译、收尾', facts_zh: '出版日期由服务填写；纪念依据由作者侧掌握' },
   programme: { name_zh: '节目单', writing_zh: '按顺序提交共同活动或一天安排。', primary_zh: '时间与中文节目条目', optional_zh: '英文译文、幕次、收尾', facts_zh: '无' },
@@ -456,7 +470,7 @@ export function contentPrimaryText(content: GenreContent): string {
     case 'checkup': return [...content.items.map((item) => `${item.item} ${item.grade}`), content.overall].join('\n');
     case 'night-log': return content.entries.map((item) => `${item.time} ${item.event}`).join('\n');
     case 'starmap': return content.nightText;
-    case 'poem': return content.lines.join('\n');
+    case 'poem': return poemText(content);
     case 'omikuji': return [content.level, ...content.poem, content.interpretation].join('\n');
     case 'emblem': return content.memorialText;
     case 'programme': return content.entries.map((item) => `${item.time} ${item.text}`).join('\n');
@@ -519,7 +533,7 @@ export function contentTextSegments(content: GenreContent): readonly string[] {
       push(content.handover);
       break;
     case 'starmap': push(content.nightText, content.caption, content.closing); break;
-    case 'poem': content.lines.forEach((line) => push(line)); break;
+    case 'poem': poemLines(content).forEach((line) => push(line)); break;
     case 'omikuji': push(content.level, ...content.poem, content.interpretation, content.englishSubtitle); break;
     case 'emblem': push(content.memorialText, content.englishSubtitle, content.closing); break;
     case 'programme':
@@ -596,7 +610,7 @@ export function contentDisplayText(content: GenreContent): string {
       ...line('交班', content.handover),
     ].join('\n');
     case 'starmap': return [content.nightText, ...line('图注', content.caption), ...line('寄语', content.closing)].join('\n');
-    case 'poem': return content.lines.join('\n');
+    case 'poem': return poemText(content);
     case 'omikuji': return [
       `签级：${content.level}`, ...content.poem, `签解：${content.interpretation}`,
       ...line('英文副题', content.englishSubtitle),
@@ -686,7 +700,7 @@ export function contentToPaperFields(content: GenreContent): Record<string, unkn
       ...(present(content.caption) ? { caption: content.caption } : {}),
       ...(present(content.closing) ? { oneline: content.closing } : {}),
     };
-    case 'poem': return { poem: [...content.lines] };
+    case 'poem': return { poem: poemLines(content) };
     case 'omikuji': return {
       level: content.level, text: content.poem.join('\n'), poem: [...content.poem], note: content.interpretation,
       ...(present(content.englishSubtitle) ? { en: content.englishSubtitle } : {}),

@@ -231,7 +231,7 @@ export interface PublicationRepository {
    */
   releaseForRetry(operationId: string, leaseId: string, nowIso: string): void;
   /** Terminate the operation with a stable failure code (permanent). */
-  failOperation(operationId: string, leaseId: string, code: OperationFailureCode, nowIso: string): void;
+  failOperation(operationId: string, leaseId: string, code: OperationFailureCode, nowIso: string, detail?: string): void;
   /** Atomically make an elapsed terminal-v1 request permanently failed. */
   expireOperation(operationId: string, nowIso: string): boolean;
   /** Persist review evidence; rejection/failure terminalizes in the same transaction. */

@@ -220,10 +220,27 @@ function terminalFailure(code: string, detail?: string): NonNullable<TerminalPub
   }
   if (code === 'invalid_input' || code === 'unsupported_genre' || code === 'unsupported_content_slot' ||
       code === 'unsupported_glyph' || code === 'render_overflow' || code === 'model_rejected') {
-    const returned = code === 'model_rejected' && typeof detail === 'string' && detail.length > 0 && detail.length <= 2048
-      ? detail
-      : 'the manuscript did not pass publication checks';
-    return { category: 'manuscript', code, message: returned, retryable: false };
+    // RenderError messages are bounded author-field diagnostics. Keep those
+    // details through persistence, but never forward paths or stack traces.
+    const safeDetail = typeof detail === 'string' && detail.length > 0 && detail.length <= 2048 &&
+      !/(?:[A-Za-z]:[\\/]|file:\/\/|(?:^|\s)\/(?:[^\s/]+\/)|\n\s*at\s)/.test(detail)
+      ? detail : undefined;
+    const guidance: Record<string, string> = {
+      invalid_input: '稿件字段格式不符合要求，请按所选体裁的字段要求修正。',
+      unsupported_genre: '所选体裁暂不支持，请选择工具中提供的体裁。',
+      unsupported_content_slot: '所选版式没有对应栏目，请选择能保留这些内容的版式。',
+      unsupported_glyph: '稿件中有当前字体无法显示的字符，请检查提示的栏目和字符位置，改用可显示的字符。',
+      render_overflow: '正文超出所选版式的可用纸面，请选择能容纳全文的版式；本次未删改原文。',
+      model_rejected: '排版审核未通过，本次没有出版。',
+    };
+    // Fit rule names and measurements belong in diagnostics, not an author's
+    // revision request. The field and available action remain explicit.
+    const poemFitAdvice = code === 'render_overflow' && safeDetail?.startsWith('诗稿');
+    const reason = code === 'render_overflow' && !poemFitAdvice ? undefined : safeDetail;
+    const message = (code === 'model_rejected' || poemFitAdvice) && reason !== undefined
+      ? reason
+      : [reason, guidance[code]].filter(Boolean).join(' ');
+    return { category: 'manuscript', code, message, retryable: false };
   }
   if (code === 'model_unavailable') {
     const timeout = typeof detail === 'string' && (detail.includes('timeout') || detail.includes('超时'));
@@ -334,7 +351,10 @@ export async function publish(ctx: ToolContext, callerId: string | undefined, ar
           reserved_publication_id: receipt.reserved_publication_id,
           outcome: 'rejected',
           replayed: receipt.replayed,
-          failure: terminalFailure(status.failure.code, status.failure.message),
+          failure: {
+            ...terminalFailure(status.failure.code),
+            ...(status.failure.message === undefined ? {} : { message: status.failure.message }),
+          },
         };
       }
       const nowMs = (ctx.now ?? Date.now)();
@@ -500,12 +520,7 @@ export async function requestStatus(
     result.failure = {
       code: view.failure_code,
       retryable: false,
-      ...(view.failure_code === 'model_rejected' && view.terminal_detail !== null
-        ? { message: view.terminal_detail }
-        : view.failure_code === 'model_unavailable' || view.failure_code === 'render_failed' ||
-          view.failure_code === 'storage_unavailable'
-          ? { message: terminalFailure(view.failure_code, view.terminal_detail ?? undefined).message }
-        : {}),
+      message: terminalFailure(view.failure_code, view.terminal_detail ?? undefined).message,
     };
   }
   return result;

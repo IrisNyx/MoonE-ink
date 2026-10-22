@@ -384,6 +384,26 @@ async function measure(page: import('playwright-core').Page, width: number, heig
     if (root === undefined || sheet === undefined) failures.push('paper_missing');
     else if (Math.abs(sheet.x) > .5 || Math.abs(sheet.y) > .5 || Math.abs(sheet.width - width) > .5) failures.push('sheet_geometry');
     if (scrolling.scrollWidth > width || scrolling.scrollHeight > height) failures.push('document_overflow');
+    const poemStage = document.querySelector('.eph-poem-stage')?.getBoundingClientRect();
+    if (poemStage !== undefined) {
+      const footerTop = document.querySelector('.eph-poem-sign')?.getBoundingClientRect().top ?? height;
+      const bottom = Math.min(poemStage.bottom, footerTop, height);
+      for (const [index, column] of Array.from(document.querySelectorAll('.eph-poem-col')).entries()) {
+        const box = column.getBoundingClientRect();
+        // Column width also counts intentionally empty authored lines. Check
+        // text ranges vertically: flex alignment stretches every column box
+        // to the longest line, which would otherwise blame unrelated lines.
+        if (box.left < poemStage.left - .5 || box.right > poemStage.right + .5) {
+          failures.push(`poem_columns_overflow:${index + 1}`);
+        }
+        const range = document.createRange();
+        range.selectNodeContents(column);
+        if (Array.from(range.getClientRects()).some((rect) => rect.width > 0 && rect.height > 0 &&
+          (rect.top < poemStage.top - .5 || rect.bottom > bottom + .5))) {
+          failures.push(`poem_line_overflow:${index + 1}`);
+        }
+      }
+    }
     const textNodes = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
     let node: Node | null;
     while ((node = textNodes.nextNode())) {
@@ -771,7 +791,8 @@ export async function renderGenre(request: {
     const geometryFor = async (paper: Paper, pageIndex?: number, pageCount?: number): Promise<{ geometry: Geometry; loaded: LockedPageLoad }> => {
       const loaded = await session.loadHtml(pageHtml(paper, request.branding, pageIndex, pageCount, weatherIcons, landscape));
       const geometry = await measure(session.page, pageWidth, pageHeight);
-      const structural = geometry.failures.filter((failure) => failure !== 'document_overflow' && failure !== 'text_outside_page');
+      const structural = geometry.failures.filter((failure) => failure !== 'document_overflow' && failure !== 'text_outside_page' &&
+        !failure.startsWith('poem_line_overflow:') && !failure.startsWith('poem_columns_overflow:'));
       if (structural.length) throw new RenderError('render_failed', `paper environment failed (${structural.join(', ')})`);
       return { geometry, loaded };
     };
@@ -814,7 +835,19 @@ export async function renderGenre(request: {
       const planned = plan[index]!;
       const { geometry, loaded } = await geometryFor(planned.paper, index, plan.length);
       served += loaded.fontFilesServed.length;
-      if (!geometry.fits) throw new RenderError('render_overflow', `${genre} page ${index + 1} does not fit`);
+      if (!geometry.fits) {
+        const longLine = geometry.failures.find((failure) => failure.startsWith('poem_line_overflow:'));
+        if (longLine !== undefined) {
+          throw new RenderError('render_overflow',
+            `诗稿第 ${longLine.split(':')[1]} 行的句长超出当前版式的可用区域。请在合适的位置加换行，或选择能容纳该句的版式；原文未被删改。`);
+        }
+        const excessColumn = geometry.failures.find((failure) => failure.startsWith('poem_columns_overflow:'));
+        if (excessColumn !== undefined) {
+          throw new RenderError('render_overflow',
+            `诗稿第 ${excessColumn.split(':')[1]} 行超出当前版式能容纳的诗行范围。请选择能容纳更多诗行的版式；原文未被删改。`);
+        }
+        throw new RenderError('render_overflow', `${genre} page ${index + 1} does not fit`);
+      }
       if (planned.sourceText.length > 0) {
         const structuredPagedBody = manuscript.content !== undefined && (genre === 'wakepaper' || genre === 'emblem');
         const pieces = manuscript.content === undefined && (genre === 'poem' || genre === 'telegram')

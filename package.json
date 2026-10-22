@@ -1,6 +1,6 @@
 {
   "name": "ephemera-mcp-service",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "private": true,
   "description": "Portable Ephemera MCP service with deterministic rendering, durable publication, query tools and verified backup/restore operations",
   "type": "module",
@@ -28,7 +28,7 @@
     "data": "node scripts/data-admin.mjs",
     "simulate:device": "node scripts/device-simulator.mjs",
     "check:runtime": "node dist/src/runtime-security.js",
-    "test": "node --test dist/test/*.test.js",
+    "test": "node scripts/test.mjs",
     "release": "npm run build && node scripts/build-release.mjs"
   },
   "dependencies": {

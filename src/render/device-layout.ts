@@ -55,9 +55,10 @@ export function deviceLayoutCss(landscape=false):string {
   .pp-sheet .eph-stub-hr {margin:${landscape?'8px 0 2px':'12px 0 4px'}}
   .pp-sheet .eph-poem-body {height:${p.height}px;display:flex;flex-direction:column}
   .pp-sheet .eph-poem-body>* {flex-shrink:0}
-  .pp-sheet .eph-poem-stage {flex:1 0 auto;min-height:0;margin-top:20px}
+  .pp-sheet .eph-poem-stage {flex:1 1 0;min-height:0;margin-top:20px}
   .pp-sheet .eph-poem-cols {margin-top:${landscape?0:58}px;gap:18px}
   .pp-sheet .eph-poem-col {font-size:26px;flex:0 0 auto;white-space:pre;line-height:1.75;letter-spacing:.12em}
+  .pp-sheet .eph-poem-col:empty {width:1.75em}
   .pp-sheet .eph-poem-col0 {font-size:34px}
   .pp-sheet .eph-poem-sign {margin-top:16px}
   .pp-sheet .eph-rx-dose {display:block;margin:4px 0 0}

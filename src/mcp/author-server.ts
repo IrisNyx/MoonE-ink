@@ -6,6 +6,7 @@ import { BusinessError } from '../errors.js';
 import {
   ENABLED_PRODUCTION_GENRE_IDS,
   ENABLED_PRODUCTION_LAYOUT_VARIANT_IDS,
+  PRODUCTION_LAYOUTS,
   authorCatalogText,
 } from '../production-catalog.js';
 import { publish, TOOL_PEEK, TOOL_PUBLISH, type ToolContext } from '../tools.js';
@@ -145,7 +146,15 @@ function broadlyCompatibleAdvertisement<Schema extends { readonly '~standard': {
   } as Schema;
 }
 
-const advertisedPublishInput = broadlyCompatibleAdvertisement(publishInput);
+// Keep the advertised writing contract strict, but let the author handler
+// return validation feedback as a publication receipt instead of an SDK error.
+// No input reaches publish() until publishInput.safeParse succeeds below.
+const advertisedPublishInput = {
+  '~standard': {
+    ...broadlyCompatibleAdvertisement(publishInput)['~standard'],
+    validate: (value: unknown) => ({ value: value as z.infer<typeof publishInput> }),
+  },
+} as typeof publishInput;
 
 const workOutput = z.strictObject({
   reference: z.string(),
@@ -158,12 +167,106 @@ const workOutput = z.strictObject({
   unread: z.boolean(),
 });
 
-const publishOutput = z.strictObject({
+const publishedOutput = z.strictObject({
   status: z.literal('published'),
   work: workOutput,
   has_supplement: z.boolean(),
 });
+const issueOutput = z.strictObject({ field: z.string(), message: z.string(), suggestion: z.string() });
+const publishOutput = z.union([
+  publishedOutput,
+  z.strictObject({ status: z.literal('rejected'), message: z.string(), issues: z.array(issueOutput).min(1) }),
+  z.strictObject({ status: z.enum(['unavailable', 'unconfirmed']), message: z.string() }),
+]);
 const advertisedPublishOutput = broadlyCompatibleAdvertisement(publishOutput);
+
+type AuthorIssue = z.infer<typeof issueOutput>;
+function publicationReceipt(payload: z.infer<typeof publishOutput>) {
+  return { content: [{ type: 'text' as const, text: JSON.stringify(payload) }], structuredContent: payload };
+}
+
+function rejected(message: string, issues: AuthorIssue[]) {
+  return publicationReceipt({ status: 'rejected', message, issues });
+}
+
+function plain(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function inputRejection(args: unknown, error: z.ZodError) {
+  const manuscript = plain(args) ? args['manuscript'] : undefined;
+  if (!plain(manuscript)) {
+    return rejected('本次未出版：稿件需要按工具提供的字段结构提交。', [{
+      field: 'manuscript', message: 'manuscript 必须是 JSON 对象，不能是字符串。',
+      suggestion: '直接将稿件对象放入 manuscript，不要把整份稿件转义成字符串；原文放在对应的 content 字段中。',
+    }]);
+  }
+  const content = manuscript['content'];
+  if (plain(content) && content['kind'] === 'poem' && 'lines' in content) {
+    return rejected('本次未出版：诗稿现在用一个字符串提交。', [{
+      field: 'manuscript.content.text', message: '请把完整诗稿放入 text 字符串。',
+      suggestion: '将原诗行按顺序用换行符（JSON 中写作 \\n）连接到 content.text，替换 content.lines；保留每句原文及空行。',
+    }]);
+  }
+  // A union error hides the useful field paths. Inspect the version/shape the
+  // author actually chose, using the same schemas that define tools/list.
+  let issues = error.issues;
+  let prefix: string[] = [];
+  if (issues.some((issue) => issue.code === 'invalid_union')) {
+    const schema = manuscript['schemaVersion'] === 3
+      ? ('content' in manuscript ? structuredManuscriptSchema : autoManuscriptSchema)
+      : manuscript['schemaVersion'] === 2 ? legacyV2Schema : legacyV1Schema;
+    const detail = schema.safeParse(manuscript);
+    if (!detail.success) { issues = detail.error.issues; prefix = ['manuscript']; }
+  }
+  const fields = issues.flatMap((issue): AuthorIssue[] => {
+    const path = [...prefix, ...issue.path.map(String)];
+    if (issue.code === 'unrecognized_keys') {
+      return issue.keys.map((key) => ({
+        field: [...path, key].join('.'), message: '所选稿件结构没有这个字段。',
+        suggestion: '请按所选体裁的字段结构填写；不要为了通过校验删去原文或改换创作意图。',
+      }));
+    }
+    return [{ field: path.join('.') || 'manuscript', message: issue.message,
+      suggestion: '请按该字段的类型和必填要求补齐或调整参数结构，保留作者原文。' }];
+  });
+  return rejected('本次未出版：请根据以下具体字段修改稿件参数。', fields);
+}
+
+function manuscriptRejection(code: string, detail: string, manuscript: unknown) {
+  if (detail === 'layoutVariant does not match the selected genre' && plain(manuscript)) {
+    const content = manuscript['content'];
+    const genre = plain(content) ? content['kind'] : manuscript['genrePreference'];
+    const layout = manuscript['layoutVariant'];
+    const compatible = PRODUCTION_LAYOUTS.filter((item) => item.genre === genre && item.availability === 'enabled');
+    const requested = PRODUCTION_LAYOUTS.find((item) => item.id === layout);
+    const poemHint = requested?.genre === 'poem'
+      ? '若本意是诗稿，请使用 content.kind="poem"，把整首诗放入 content.text 字符串，用换行符（JSON 中写作 \\n）保留原文与分行。'
+      : '若本意是所选版式对应的体裁，请按该体裁的 content 结构填写原稿。';
+    return rejected('本次未出版：稿件体裁与指定版式不一致。', [{
+      field: 'manuscript.layoutVariant', message: `content.kind=${String(genre)} 与 layoutVariant=${String(layout)} 不匹配。`,
+      suggestion: `${poemHint}若要保留 ${String(genre)} 体裁，可省略 layoutVariant 自动选版${compatible.length ? `，或使用 ${compatible.map((item) => item.id).join('、')}` : ''}。改变 strict/preferred 不能消除体裁冲突。`,
+    }]);
+  }
+  const slot = /(?:has no (?:author )?|paper has no )(title|subtitle|signature|tone|recipient)\b/.exec(detail)?.[1];
+  if (slot !== undefined) {
+    return rejected(`本次未出版：${detail}`, [{
+      field: `manuscript.${slot === 'recipient' ? 'bylines.recipient' : slot}`, message: detail,
+      suggestion: '所选版式没有这个栏目。请使用能承载该栏目的体裁；不要丢弃作者已经写下的内容来迁就版式。',
+    }]);
+  }
+  return rejected(detail, [{
+    field: code === 'model_rejected' ? 'page' : 'manuscript', message: detail,
+    suggestion: code === 'model_rejected'
+      ? '以上为本次排版审核返回的具体意见；保留作者原文，不要用增删文字来掩盖版式显示故障。'
+      : '请依据指出的栏目或内容问题调整稿件参数；保留原文，不需要检查 MCP 连接或内部任务。',
+  }]);
+}
+
+function unavailable(unconfirmed = false) {
+  return publicationReceipt({ status: unconfirmed ? 'unconfirmed' : 'unavailable',
+    message: unconfirmed ? '本次出版结果暂未确认。' : '本次未出版，服务暂时无法完成；不需要修改稿件。' });
+}
 
 const peekInput = z.strictObject({
   scope: z.enum(['overview', 'unread', 'recent', 'work', 'weather']).optional().describe(
@@ -217,29 +320,32 @@ export function buildAuthorMcpServer(ctx: McpRequestContextInput, toolContext: T
     TOOL_PUBLISH,
     {
       description: '写下并正式出版一篇纸。重要：写气象简报前，必须先调用 ephemera_peek(scope=weather) 看真实预报，再用 content.kind=weather 投稿；未经预览的天气稿不会出版。当前 21 种体裁可新投；普通散文可自动选版，结构稿由 content.kind 明确选择。' +
-        '长醒来纸会自动生成同一作品内的附刊。成功只返回作者作品内容与结果，不返回内部任务或渲染诊断。\n\n' + authorCatalogText(),
+        '长醒来纸会自动生成同一作品内的附刊。本次调用直接返回已出版，或未通过及具体修改意见；服务暂时不可用会单独说明，不要求作者调试。成功只返回作者作品内容与结果，不返回内部任务或渲染诊断。\n\n' + authorCatalogText(),
       inputSchema: advertisedPublishInput,
       outputSchema: advertisedPublishOutput,
       annotations: { title: '写一篇纸', readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
     },
     async (args) => {
       const parsed = publishInput.safeParse(args ?? {});
-      if (!parsed.success) return failure(new BusinessError('invalid_input', '稿件格式不正确'));
+      if (!parsed.success) return inputRejection(args, parsed.error);
+      if (!toolContext.publishAvailable || ctx.callerId === undefined) return unavailable();
+      let publicationStarted = false;
       try {
         if ('content' in parsed.data.manuscript && parsed.data.manuscript.content.kind === 'weather') {
-          if (ctx.callerId === undefined || toolContext.authorWeatherForecast === undefined ||
-              viewedWeatherByCaller.get(ctx.callerId) === undefined) {
-            return failure(new BusinessError('invalid_input',
-              '气象简报尚未读取预报。先调用 ephemera_peek，参数 scope=weather；看过今天、明天、后天的真实天气后，按预报写 commentary，再以 content.kind=weather 投稿。'));
+          if (toolContext.authorWeatherForecast === undefined) return unavailable();
+          if (viewedWeatherByCaller.get(ctx.callerId) === undefined) {
+            return manuscriptRejection('invalid_input',
+              '气象简报尚未读取预报。先调用 ephemera_peek，参数 scope=weather；看过今天、明天、后天的真实天气后，按预报写 commentary，再以 content.kind=weather 投稿。', parsed.data.manuscript);
           }
           const currentForecast = await toolContext.authorWeatherForecast();
           const viewed = viewedWeatherByCaller.get(ctx.callerId);
           const current = weatherPreviewIdentity(currentForecast);
           if (viewed?.locationId !== current.locationId || viewed.date !== current.date) {
-            return failure(new BusinessError('invalid_input',
-              '天气地点或日期已变化。请重新调用 ephemera_peek(scope=weather)，依据新预报修改天气稿后再投稿。'));
+            return manuscriptRejection('invalid_input',
+              '天气地点或日期已变化。请重新调用 ephemera_peek(scope=weather)，依据新预报修改天气稿后再投稿。', parsed.data.manuscript);
           }
         }
+        publicationStarted = true;
         const result = await publish(toolContext, ctx.callerId, {
           expected_instance_id: toolContext.store.instanceId,
           request_id: `author:${randomUUID()}`,
@@ -247,22 +353,25 @@ export function buildAuthorMcpServer(ctx: McpRequestContextInput, toolContext: T
           contract_version: 'terminal-v1',
         });
         if (!('outcome' in result) || result.outcome !== 'published' || result.publication === undefined) {
-          const message = 'failure' in result && result.failure?.code === 'model_rejected'
-            ? '页面显示有文字缺失或不可读，本次没有发布；请联系管理员检查版式，不需要修改原文。'
-            : 'failure' in result && result.failure !== undefined ? result.failure.message : '这篇稿件没有出版成功';
-          const code = 'failure' in result && result.failure?.category === 'technical' ? 'render_failed' : 'invalid_input';
-          return failure(new BusinessError(code, message));
+          if ('failure' in result && result.failure !== undefined) {
+            if (result.failure.category === 'manuscript') {
+              return manuscriptRejection(result.failure.code, result.failure.message, parsed.data.manuscript);
+            }
+            return unavailable(result.failure.code === 'unknown_after_restore');
+          }
+          return unavailable(true);
         }
         const view = toolContext.query.authorPeek(ctx.callerId, {
           scope: 'work', work: result.publication.publication_id, limit: 1,
         });
         const work = view.items[0];
-        if (work === undefined) throw new BusinessError('storage_unavailable', '作品已经出版，但暂时无法读取', true);
+        if (work === undefined) return unavailable(true);
         const payload = { status: 'published' as const, work, has_supplement: work.part_count > 1 };
         return { content: [{ type: 'text' as const, text: JSON.stringify(payload) }], structuredContent: payload };
-      } catch (error) {
-        if (error instanceof BusinessError) return failure(error);
-        return failure(new BusinessError('storage_unavailable', '暂时无法出版，请稍后再试', true));
+      } catch {
+        // Once submission starts, an exception cannot establish whether the
+        // durable worker has already committed (or may still commit).
+        return unavailable(publicationStarted);
       }
     },
   );
